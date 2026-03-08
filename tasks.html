@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Tasks</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('HD-wallpaper-beautiful-landscape-digital-art.jpg');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Task planner</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a class="active" href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable Gen</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <h2>Task planner</h2>
+                    <p>Capture work, assign focus time, and finish one thing at a time.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="two-column">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Add task</p>
+                            <h3 style="margin-bottom: 8px;">Plan your next study step</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="taskTitle" type="text" placeholder="Task title">
+                        <div class="inline-form">
+                            <select class="select" id="taskSubject">
+                                <option value="">Select subject</option>
+                            </select>
+                            <input class="field" id="taskMinutes" type="number" min="5" max="240" step="5" placeholder="Minutes">
+                        </div>
+                        <div class="inline-form">
+                            <select class="select" id="taskPriority">
+                                <option value="High">High priority</option>
+                                <option value="Medium">Medium priority</option>
+                                <option value="Low">Low priority</option>
+                            </select>
+                            <input class="field" id="taskDeadline" type="date">
+                        </div>
+                        <textarea class="textarea" id="taskNotes" placeholder="Task notes, chapters, questions, or reminders"></textarea>
+                        <button class="btn btn-primary" id="createTaskBtn" type="button">Save task</button>
+                        <div class="status-line" id="taskStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Live session</p>
+                            <h3 style="margin-bottom: 8px;">Single-task countdown</h3>
+                            <p class="muted">Start a timer from any task card. Only one countdown runs at a time.</p>
+                        </div>
+                    </div>
+                    <div class="focus-display" id="activeTimer">00:00</div>
+                    <div class="pill" id="activeTimerLabel">No task running</div>
+                </article>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Task board</p>
+                        <h3 style="margin-bottom: 8px;">Your study tasks</h3>
+                    </div>
+                    <div class="toolbar">
+                        <button class="btn btn-ghost" type="button" onclick="setFilter('all')">All</button>
+                        <button class="btn btn-ghost" type="button" onclick="setFilter('open')">Open</button>
+                        <button class="btn btn-ghost" type="button" onclick="setFilter('done')">Completed</button>
+                    </div>
+                </div>
+                <div class="list" id="tasksList"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const profile = StudyQuest.getProfile();
+        let tasks = StudyQuest.getTasks();
+        let filter = 'all';
+        let countdown = null;
+        let activeTaskId = null;
+        let remainingSeconds = 0;
+
+        const subjectSelect = document.getElementById('taskSubject');
+        const taskStatus = document.getElementById('taskStatus');
+        const tasksList = document.getElementById('tasksList');
+        const activeTimer = document.getElementById('activeTimer');
+        const activeTimerLabel = document.getElementById('activeTimerLabel');
+
+        subjectSelect.innerHTML += profile.subjects.map((subject) => `<option value="${subject}">${subject}</option>`).join('');
+
+        function formatCountdown(totalSeconds) {
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        }
+
+        function saveTasks() {
+            StudyQuest.saveTasks(tasks);
+        }
+
+        function renderTasks() {
+            let visibleTasks = tasks;
+            if (filter === 'open') {
+                visibleTasks = tasks.filter((task) => !task.done);
+            } else if (filter === 'done') {
+                visibleTasks = tasks.filter((task) => task.done);
+            }
+
+            if (!visibleTasks.length) {
+                tasksList.innerHTML = '<div class="empty">No tasks in this view yet.</div>';
+                return;
+            }
+
+            tasksList.innerHTML = visibleTasks.map((task) => `
+                <div class="task-card ${task.done ? 'done' : ''}">
+                    <div class="task-topline">
+                        <div>
+                            <div class="task-title"><strong>${task.title}</strong></div>
+                            <div class="muted">${task.subject || 'General'} • ${task.priority} priority • ${task.minutes} mins</div>
+                            <div class="muted">${task.deadline ? `Due ${task.deadline}` : 'No deadline set'}</div>
+                            <div style="margin-top: 8px;">${task.notes || ''}</div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" type="button" onclick="toggleDone('${task.id}')">${task.done ? 'Reopen' : 'Done'}</button>
+                            <button class="btn btn-ghost" type="button" onclick="startTaskTimer('${task.id}')">Start timer</button>
+                            <button class="btn btn-danger" type="button" onclick="deleteTask('${task.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('createTaskBtn').addEventListener('click', () => {
+            const title = document.getElementById('taskTitle').value.trim();
+            const subject = document.getElementById('taskSubject').value;
+            const minutes = Number(document.getElementById('taskMinutes').value || 0);
+            const priority = document.getElementById('taskPriority').value;
+            const deadline = document.getElementById('taskDeadline').value;
+            const notes = document.getElementById('taskNotes').value.trim();
+
+            if (!title || !minutes) {
+                taskStatus.textContent = 'Please enter a task title and time estimate.';
+                return;
+            }
+
+            tasks.unshift({
+                id: StudyQuest.newId(),
+                title,
+                subject,
+                minutes,
+                priority,
+                deadline,
+                notes,
+                done: false,
+                createdAt: new Date().toISOString()
+            });
+
+            saveTasks();
+            renderTasks();
+            taskStatus.textContent = 'Task saved.';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskMinutes').value = '';
+            document.getElementById('taskDeadline').value = '';
+            document.getElementById('taskNotes').value = '';
+        });
+
+        window.toggleDone = (taskId) => {
+            tasks = tasks.map((task) => task.id === taskId ? { ...task, done: !task.done } : task);
+            saveTasks();
+            renderTasks();
+        };
+
+        window.deleteTask = (taskId) => {
+            if (activeTaskId === taskId) {
+                clearInterval(countdown);
+                countdown = null;
+                activeTaskId = null;
+                activeTimer.textContent = '00:00';
+                activeTimerLabel.textContent = 'No task running';
+            }
+            tasks = tasks.filter((task) => task.id !== taskId);
+            saveTasks();
+            renderTasks();
+        };
+
+        window.startTaskTimer = (taskId) => {
+            const task = tasks.find((item) => item.id === taskId);
+            if (!task) {
+                return;
+            }
+
+            clearInterval(countdown);
+            activeTaskId = taskId;
+            remainingSeconds = task.minutes * 60;
+            activeTimer.textContent = formatCountdown(remainingSeconds);
+            activeTimerLabel.textContent = `Running: ${task.title}`;
+            countdown = setInterval(() => {
+                remainingSeconds -= 1;
+                activeTimer.textContent = formatCountdown(Math.max(remainingSeconds, 0));
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdown);
+                    countdown = null;
+                    activeTaskId = null;
+                    activeTimerLabel.textContent = `Completed: ${task.title}`;
+                    alert(`Time is up for ${task.title}.`);
+                }
+            }, 1000);
+        };
+
+        window.setFilter = (nextFilter) => {
+            filter = nextFilter;
+            renderTasks();
+        };
+
+        renderTasks();
+    </script>
+</body>
+</html>

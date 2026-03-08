@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Welcome</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('STUDYQUEST.png');
+        }
+    </style>
+</head>
+<body>
+    <main class="onboarding-shell">
+        <section class="onboarding-card">
+            <div class="onboarding-panel">
+                <img src="studyquest-high-resolution-logo-transparent.png" alt="StudyQuest logo" style="width: 180px; max-width: 100%;">
+                <p class="eyebrow">Study planner</p>
+                <h1>Build a calmer study routine.</h1>
+                <p>StudyQuest now saves your learner profile, your notes, your tasks, and your focus workflow directly in the browser so you can come back and continue where you left off.</p>
+                <div class="stack" style="margin-top: 28px;">
+                    <div class="list-item">Create a learner profile with class, subjects, and goals.</div>
+                    <div class="list-item">Track tasks and timed study sessions from one dashboard.</div>
+                    <div class="list-item">Keep subject notes organized without losing progress on refresh.</div>
+                </div>
+            </div>
+            <div class="onboarding-form">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Get started</p>
+                        <h2 style="margin: 0;">Set up your StudyQuest space</h2>
+                    </div>
+                </div>
+                <form id="onboardingForm">
+                    <div class="form-grid">
+                        <input class="field" id="name" type="text" placeholder="Your name" required>
+                        <select class="select" id="className" required>
+                            <option value="">Select class</option>
+                            <option>Class 6</option>
+                            <option>Class 7</option>
+                            <option>Class 8</option>
+                            <option>Class 9</option>
+                            <option>Class 10</option>
+                            <option>Class 11</option>
+                            <option>Class 12</option>
+                            <option>College</option>
+                            <option>Other</option>
+                        </select>
+                        <input class="field" id="email" type="email" placeholder="Email address" required>
+                        <input class="field" id="goal" type="text" placeholder="Main academic goal" required>
+                        <input class="field full" id="subjects" type="text" placeholder="Interested subjects, separated by commas" required>
+                        <textarea class="textarea full" id="studyStyle" placeholder="What do you want help with most? Example: revision planning, concentration, daily consistency"></textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Enter StudyQuest</button>
+                    <p class="footer-note">This setup is stored locally in your browser, so it works without a backend.</p>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script src="studyquest.js"></script>
+    <script>
+        const existingProfile = StudyQuest.getProfile();
+        if (existingProfile) {
+            window.location.href = 'home.html';
+        }
+
+        document.getElementById('onboardingForm').addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const profile = {
+                name: document.getElementById('name').value.trim(),
+                className: document.getElementById('className').value,
+                email: document.getElementById('email').value.trim(),
+                goal: document.getElementById('goal').value.trim(),
+                subjects: document.getElementById('subjects').value.split(',').map((item) => item.trim()).filter(Boolean),
+                studyStyle: document.getElementById('studyStyle').value.trim(),
+                createdAt: new Date().toISOString()
+            };
+
+            StudyQuest.saveProfile(profile);
+            window.location.href = 'home.html';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Notes</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('desktop-wallpaper-peaceful-nature.jpg');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Notes space</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a class="active" href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable Gen</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <h2>Subject notes</h2>
+                    <p>Organize notes by subject and keep a single writing space per topic.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="two-column">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Subjects</p>
+                            <h3 style="margin-bottom: 8px;">Your notebook list</h3>
+                        </div>
+                    </div>
+                    <div class="inline-form">
+                        <input class="field" id="newSubjectName" type="text" placeholder="Add a subject or topic">
+                        <button class="btn btn-primary" id="addSubjectBtn" type="button">Add</button>
+                    </div>
+                    <div class="subject-list" id="subjectList" style="margin-top: 18px;"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Editor</p>
+                            <h3 style="margin-bottom: 8px;" id="editorTitle">Select a subject</h3>
+                            <p class="muted">Everything saves to your browser automatically.</p>
+                        </div>
+                    </div>
+                    <textarea class="textarea" id="notesEditor" placeholder="Choose a subject on the left, then start writing..." disabled></textarea>
+                    <div class="toolbar" style="margin-top: 14px;">
+                        <button class="btn btn-primary" id="saveNoteBtn" type="button">Save note</button>
+                        <button class="btn btn-danger" id="deleteSubjectBtn" type="button">Delete subject</button>
+                    </div>
+                    <div class="status-line" id="notesStatus"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        let notes = StudyQuest.getNotes();
+        let activeSubjectId = notes[0]?.id || null;
+
+        const subjectList = document.getElementById('subjectList');
+        const editorTitle = document.getElementById('editorTitle');
+        const notesEditor = document.getElementById('notesEditor');
+        const notesStatus = document.getElementById('notesStatus');
+
+        function saveNotes() {
+            StudyQuest.saveNotes(notes);
+        }
+
+        function getActiveSubject() {
+            return notes.find((item) => item.id === activeSubjectId) || null;
+        }
+
+        function renderSubjects() {
+            if (!notes.length) {
+                subjectList.innerHTML = '<div class="empty">No subjects yet. Add your first notebook.</div>';
+                editorTitle.textContent = 'Select a subject';
+                notesEditor.value = '';
+                notesEditor.disabled = true;
+                return;
+            }
+
+            if (!getActiveSubject()) {
+                activeSubjectId = notes[0].id;
+            }
+
+            subjectList.innerHTML = notes.map((note) => `
+                <button class="subject-button ${note.id === activeSubjectId ? 'active' : ''}" type="button" onclick="selectSubject('${note.id}')">
+                    <strong>${note.name}</strong>
+                    <span class="muted">${note.content ? `${note.content.length} characters saved` : 'No notes yet'}</span>
+                </button>
+            `).join('');
+
+            const activeSubject = getActiveSubject();
+            editorTitle.textContent = activeSubject.name;
+            notesEditor.disabled = false;
+            notesEditor.value = activeSubject.content;
+        }
+
+        window.selectSubject = (subjectId) => {
+            activeSubjectId = subjectId;
+            renderSubjects();
+            notesStatus.textContent = '';
+        };
+
+        document.getElementById('addSubjectBtn').addEventListener('click', () => {
+            const input = document.getElementById('newSubjectName');
+            const name = input.value.trim();
+            if (!name) {
+                return;
+            }
+
+            const note = { id: StudyQuest.newId(), name, content: '' };
+            notes.push(note);
+            activeSubjectId = note.id;
+            saveNotes();
+            input.value = '';
+            renderSubjects();
+            notesStatus.textContent = 'Subject added.';
+        });
+
+        document.getElementById('saveNoteBtn').addEventListener('click', () => {
+            const activeSubject = getActiveSubject();
+            if (!activeSubject) {
+                return;
+            }
+
+            notes = notes.map((note) => note.id === activeSubject.id ? { ...note, content: notesEditor.value } : note);
+            saveNotes();
+            renderSubjects();
+            notesStatus.textContent = 'Note saved.';
+        });
+
+        document.getElementById('deleteSubjectBtn').addEventListener('click', () => {
+            const activeSubject = getActiveSubject();
+            if (!activeSubject) {
+                return;
+            }
+
+            notes = notes.filter((note) => note.id !== activeSubject.id);
+            activeSubjectId = notes[0]?.id || null;
+            saveNotes();
+            renderSubjects();
+            notesStatus.textContent = 'Subject deleted.';
+        });
+
+        notesEditor.addEventListener('input', () => {
+            notesStatus.textContent = 'Unsaved changes';
+        });
+
+        renderSubjects();
+    </script>
+</body>
+</html>

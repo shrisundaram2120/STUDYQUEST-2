@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Dashboard</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('ec9eb7d878c45d52bb3988b2fc8af95e.jpg');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Dashboard</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a class="active" href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable Gen</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+            </nav>
+            <div class="sidebar-note">
+                <strong>Today's reminder</strong>
+                <p style="margin-bottom: 0;">One strong, focused session is better than a distracted afternoon.</p>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <h2 id="welcomeTitle">Welcome back</h2>
+                    <p id="welcomeSubtitle">Let's build momentum for today.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="dashboard-grid">
+                <article class="card hero-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Focus room</p>
+                            <h3 style="margin-bottom: 8px;">Deep work timer</h3>
+                            <p class="muted">Run a study sprint and keep track of how much focused time you have completed today.</p>
+                        </div>
+                        <span class="pill" id="timerState">Ready</span>
+                    </div>
+                    <div class="focus-display" id="focusTimer">25:00</div>
+                    <div class="inline-form" style="margin-bottom: 14px;">
+                        <input class="field" id="timerMinutes" type="number" min="5" max="180" value="25" placeholder="Minutes">
+                        <button class="btn btn-primary" id="startTimerBtn" type="button">Start</button>
+                        <button class="btn btn-secondary" id="pauseTimerBtn" type="button">Pause</button>
+                        <button class="btn btn-ghost" id="resetTimerBtn" type="button">Reset</button>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric">
+                            <strong id="completedTasksCount">0</strong>
+                            <span class="muted">Tasks completed</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="plannedTasksCount">0</strong>
+                            <span class="muted">Planned tasks</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="subjectsCount">0</strong>
+                            <span class="muted">Subjects tracked</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card side-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Quick capture</p>
+                            <h3 style="margin-bottom: 8px;">Today's short task list</h3>
+                        </div>
+                    </div>
+                    <div class="inline-form">
+                        <input class="field" id="quickTaskInput" type="text" placeholder="Add a quick task">
+                        <button class="btn btn-primary" id="addQuickTaskBtn" type="button">Add</button>
+                    </div>
+                    <div class="list" id="quickTasksList" style="margin-top: 16px;"></div>
+                </article>
+
+                <article class="card half-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Profile</p>
+                            <h3 style="margin-bottom: 8px;">Learner snapshot</h3>
+                        </div>
+                    </div>
+                    <div class="stack" id="profileSummary"></div>
+                </article>
+
+                <article class="card half-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Motivation</p>
+                            <h3 style="margin-bottom: 8px;">Quote of the day</h3>
+                        </div>
+                    </div>
+                    <div class="quote-box" id="quoteBox"></div>
+                    <ul class="tips-list" id="tipsList" style="margin-top: 18px;"></ul>
+                </article>
+
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Daily flow</p>
+                            <h3 style="margin-bottom: 8px;">Study schedule</h3>
+                            <p class="muted">Save a few anchor blocks for the day so you always know what comes next.</p>
+                        </div>
+                    </div>
+                    <div class="inline-form">
+                        <input class="field" id="scheduleTime" type="time">
+                        <input class="field" id="scheduleTask" type="text" placeholder="Study block title">
+                        <input class="field" id="scheduleNote" type="text" placeholder="Short note or goal">
+                        <button class="btn btn-primary" id="saveScheduleBtn" type="button">Add block</button>
+                    </div>
+                    <div class="list" id="scheduleList" style="margin-top: 18px;"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const profile = StudyQuest.getProfile();
+        const allTasks = StudyQuest.getTasks();
+        let quickTasks = StudyQuest.getDashboardTasks();
+        let schedule = StudyQuest.getSchedule();
+
+        const welcomeTitle = document.getElementById('welcomeTitle');
+        const welcomeSubtitle = document.getElementById('welcomeSubtitle');
+        const profileSummary = document.getElementById('profileSummary');
+        const quoteBox = document.getElementById('quoteBox');
+        const tipsList = document.getElementById('tipsList');
+        const quickTasksList = document.getElementById('quickTasksList');
+        const scheduleList = document.getElementById('scheduleList');
+
+        welcomeTitle.textContent = `Welcome back, ${profile.name}`;
+        welcomeSubtitle.textContent = `${profile.className} • Goal: ${profile.goal}`;
+
+        document.getElementById('completedTasksCount').textContent = allTasks.filter((task) => task.done).length;
+        document.getElementById('plannedTasksCount').textContent = allTasks.length;
+        document.getElementById('subjectsCount').textContent = profile.subjects.length;
+
+        profileSummary.innerHTML = `
+            <div class="list-item"><strong>Name</strong><div class="muted">${profile.name}</div></div>
+            <div class="list-item"><strong>Class</strong><div class="muted">${profile.className}</div></div>
+            <div class="list-item"><strong>Subjects</strong><div class="muted">${profile.subjects.join(', ')}</div></div>
+            <div class="list-item"><strong>Focus area</strong><div class="muted">${profile.studyStyle || 'General study planning and consistency'}</div></div>
+        `;
+
+        quoteBox.textContent = StudyQuest.getQuoteOfDay();
+        tipsList.innerHTML = StudyQuest.getTips().map((tip) => `<li>${tip}</li>`).join('');
+
+        function renderQuickTasks() {
+            if (!quickTasks.length) {
+                quickTasksList.innerHTML = '<div class="empty">No quick tasks yet. Add one small win for today.</div>';
+                return;
+            }
+
+            quickTasksList.innerHTML = quickTasks.map((task) => `
+                <div class="task-card ${task.done ? 'done' : ''}">
+                    <div class="task-topline">
+                        <div>
+                            <div class="task-title"><strong>${task.title}</strong></div>
+                            <div class="muted">Added ${new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" type="button" onclick="toggleQuickTask('${task.id}')">${task.done ? 'Undo' : 'Done'}</button>
+                            <button class="btn btn-danger" type="button" onclick="deleteQuickTask('${task.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSchedule() {
+            if (!schedule.length) {
+                scheduleList.innerHTML = '<div class="empty">Your schedule blocks will appear here.</div>';
+                return;
+            }
+
+            scheduleList.innerHTML = schedule
+                .slice()
+                .sort((a, b) => a.time.localeCompare(b.time))
+                .map((row) => `
+                    <div class="schedule-row">
+                        <div class="subject-row">
+                            <div>
+                                <strong>${row.time}</strong>
+                                <div>${row.task}</div>
+                                <div class="muted">${row.note}</div>
+                            </div>
+                            <button class="btn btn-danger" type="button" onclick="removeSchedule('${row.id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        document.getElementById('addQuickTaskBtn').addEventListener('click', () => {
+            const input = document.getElementById('quickTaskInput');
+            const title = input.value.trim();
+            if (!title) {
+                return;
+            }
+
+            quickTasks.unshift({ id: StudyQuest.newId(), title, done: false, createdAt: new Date().toISOString() });
+            StudyQuest.saveDashboardTasks(quickTasks);
+            input.value = '';
+            renderQuickTasks();
+        });
+
+        document.getElementById('saveScheduleBtn').addEventListener('click', () => {
+            const time = document.getElementById('scheduleTime').value;
+            const task = document.getElementById('scheduleTask').value.trim();
+            const note = document.getElementById('scheduleNote').value.trim();
+            if (!time || !task) {
+                return;
+            }
+
+            schedule.push({ id: StudyQuest.newId(), time, task, note });
+            StudyQuest.saveSchedule(schedule);
+            document.getElementById('scheduleTime').value = '';
+            document.getElementById('scheduleTask').value = '';
+            document.getElementById('scheduleNote').value = '';
+            renderSchedule();
+        });
+
+        window.toggleQuickTask = (taskId) => {
+            quickTasks = quickTasks.map((task) => task.id === taskId ? { ...task, done: !task.done } : task);
+            StudyQuest.saveDashboardTasks(quickTasks);
+            renderQuickTasks();
+        };
+
+        window.deleteQuickTask = (taskId) => {
+            quickTasks = quickTasks.filter((task) => task.id !== taskId);
+            StudyQuest.saveDashboardTasks(quickTasks);
+            renderQuickTasks();
+        };
+
+        window.removeSchedule = (rowId) => {
+            schedule = schedule.filter((row) => row.id !== rowId);
+            StudyQuest.saveSchedule(schedule);
+            renderSchedule();
+        };
+
+        let timerSeconds = 25 * 60;
+        let timerInterval = null;
+        const focusTimer = document.getElementById('focusTimer');
+        const timerState = document.getElementById('timerState');
+        const timerMinutesInput = document.getElementById('timerMinutes');
+
+        function paintTimer() {
+            const minutes = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+            const seconds = String(timerSeconds % 60).padStart(2, '0');
+            focusTimer.textContent = `${minutes}:${seconds}`;
+        }
+
+        document.getElementById('startTimerBtn').addEventListener('click', () => {
+            if (timerInterval) {
+                return;
+            }
+
+            if (timerSeconds <= 0) {
+                timerSeconds = Number(timerMinutesInput.value || 25) * 60;
+                paintTimer();
+            }
+
+            timerState.textContent = 'Running';
+            timerState.className = 'pill success';
+            timerInterval = setInterval(() => {
+                timerSeconds -= 1;
+                paintTimer();
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    timerState.textContent = 'Completed';
+                    timerState.className = 'pill success';
+                    alert('Focus session complete. Take a short break.');
+                }
+            }, 1000);
+        });
+
+        document.getElementById('pauseTimerBtn').addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timerState.textContent = 'Paused';
+            timerState.className = 'pill';
+        });
+
+        document.getElementById('resetTimerBtn').addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timerSeconds = Number(timerMinutesInput.value || 25) * 60;
+            timerState.textContent = 'Ready';
+            timerState.className = 'pill';
+            paintTimer();
+        });
+
+        timerMinutesInput.addEventListener('change', () => {
+            timerSeconds = Number(timerMinutesInput.value || 25) * 60;
+            paintTimer();
+        });
+
+        paintTimer();
+        renderQuickTasks();
+        renderSchedule();
+    </script>
+</body>
+</html>

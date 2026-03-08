@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <title>ChatBot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+      
+        .chat-container {
+            width: 100%;
+            max-width: 1200px; 
+            margin: 0 auto; 
+            min-width: 100%;
+            max-height: 85%;
+            overflow-y: auto;
+            background-color: #4e4e4e;
+        }
+    
+        .chat-messages {
+            
+            width: 100%; 
+            max-width: calc(100% - 5px); 
+            margin: 0 auto;
+            display: flex; 
+            flex-direction: column; 
+            min-width: 90%;
+            overflow-y: auto;
+        }
+    
+        .user-message {
+           
+            color: #ffffff; 
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            align-self: flex-start; 
+            max-width: 70%; 
+            word-wrap: break-word;
+            margin-left: 0px;
+            font-family: 'Poppins', sans-serif; 
+    font-weight: 200; 
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 1.6; 
+        }
+    
+        .ai-response {
+    color: #ffffff;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    max-width: 80%;
+    align-self: flex-start;
+    font-family: 'Poppins', sans-serif; 
+    font-weight: 200; 
+    font-size: 16px; 
+    letter-spacing: 0.5px; 
+    line-height: 1.5; 
+    margin-right: 0px;
+}
+        #ic {
+    max-width: 90%;
+    margin: auto;
+    min-width: 90%;
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 10px;
+    background-color: #1b1b1b;
+    border-radius: 10px;
+}
+#idk,#idk1{
+    background-color: #333;
+}
+#user-input{
+    background-color: #1b1b1b;
+}
+    @media  screen and (max-width:680px) {
+        .user-message,.ai-response{
+            min-width: 95%;
+            max-width: 95%;
+        }
+        #chat-messages img{
+            min-width: 80%;
+            width: 80%;
+        }
+    }
+    #chat-messages img{
+            width: 40%;
+            margin-left: 7px;
+            
+        }
+    </style>
+    
+    
+
+</head>
+<a href="https://studyquest12c.github.io/" target="_blank" style="color: cyan; text-decoration: underline;margin-left: 5px; letter-spacing: 1px;">StudyQuest</a>
+<a href="#" target="_blank" style="color: cyan; text-decoration: underline;margin-left: 5px; letter-spacing: 1px;">Your study companion </a>
+<a href="https://discord.gg/A78e55KyuR" id="userCount" style="color: white;margin-left: 10px;"></a>
+<a href="" id="nn" style="color: white;margin-left: 10px;">Please Like This Space ❤</a>
+
+</div>
+<body  id="idk1">
+    <div class="chat-container flex-1 flex flex-col" id="idk">
+        <div class=" rounded-lg shadow-md flex-1">
+         
+           
+            <div id="chat-messages" class="px-4 py-6 chat-messages">
+               
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-gray-200 px-4 py-3 flex items-center" id="ic">
+        <input id="user-input" type="text" autocomplete="off" placeholder="Type your message..." class="flex-1 py-2 px-2 rounded-lg focus:outline-none focus:ring focus:ring-cyan-400 bg-gray-200 text-gray-300">
+        <button id='btn' onclick="sendMessage()" class="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg">Send</button>
+    </div>
+
+    
+    <script src="https://cdn.socket.io/4.1.3/socket.io.min.js"></script>
+
+    <script>
+      alert(`
+      * you shouldn't simp on anyone in chat 
+      * you shouldn't bully anyone 
+      * be a normal human being 
+      Else you will be banned 
+
+      *Image Generation is now available :) 
+      
+      NOTE :- you will be banned if you tried to manipulate ai behaviour `)
+        var socket = io.connect('https://apix-30ox.onrender.com');
+        var messages = document.getElementById('chat-messages');
+        let user = localStorage.getItem("userName")
+        console.log(user)
+        if (user == null) {
+    while (true) {
+        user = prompt('Create Your Username');
+        if (user != null && user !== '' && user !== undefined) {
+            let upperCaseUser = user.toUpperCase();
+            if (!upperCaseUser.includes(" ")) {
+                localStorage.setItem("userName", upperCaseUser);
+                break;
+            } else {
+                alert("This name can't be taken. Please choose a different username.");
+            }
+        }
+    }
+}
+        console.log(user)
+        var userInput = document.getElementById('user-input');
+        socket.on('user_count', function(data) {
+    var onlineUsersCount = data.count;
+    document.getElementById('userCount').innerText = `Online Users: ${onlineUsersCount}`    
+});
+        function sendMessage() {
+    document.getElementById('btn').disabled = true;
+    setTimeout(function(){
+        document.getElementById('btn').disabled = false;
+    }, 7000); // 5000 milliseconds = 5 seconds
+    var message = userInput.value;
+    if (message.length > 1200 ) {
+        alert('Message length exceeds 1200 characters!!');
+    } else {
+      if(user ==',,,,,,, ' || user==',,,,, '){
+        alert('you have been tempraraily banned')
+      }
+      else{
+        var data = {
+            user: user,
+            message: message
+        };
+        socket.emit('message', data);
+        userInput.value = '';
+    }
+    }
+}
+        userInput.addEventListener("keypress", function(event) {
+      if (event.keyCode === 13) { 
+        if(!document.getElementById('btn').disabled){
+            sendMessage();
+        }
+        
+      }
+    });
+  
+       
+        
+    socket.on('message', function(data) {
+    // Create a temporary element to hold the received HTML content
+    var tempElement = document.createElement('div');
+    tempElement.innerHTML = data;
+
+    // Append the contents of the temporary element to the 'messages' element
+    while (tempElement.firstChild) {
+        messages.appendChild(tempElement.firstChild);
+    }
+});
+
+socket.on('response', function(data) {
+    if(data.img!=null || data.img!=undefined){
+        var img = document.createElement('img');
+        img.src = data.img;
+        messages.appendChild(img);
+    }
+    else{
+    console.log(data.response); 
+    var currentMessage = messages.lastChild;
+    if (data.response === 'complete') {
+        currentMessage = null;
+      document.getElementById('btn').disabled = false
+    } else {
+        if (!currentMessage || !currentMessage.classList.contains('ai-response')) {
+            currentMessage = document.createElement('p');
+            currentMessage.classList.add('ai-response');
+            
+            var aiLabel = document.createElement('h1');
+            aiLabel.style.color = 'skyblue'
+            aiLabel.textContent = 'AI RESPONSE: ';
+            
+            currentMessage.appendChild(aiLabel);
+            currentMessage.appendChild(document.createElement('br')); 
+            
+            messages.appendChild(currentMessage);
+        }
+   
+        var responseText = document.createTextNode(data.response);
+        
+        
+        currentMessage.appendChild(responseText);
+        
+        }
+    }   
+});
+socket.on('image', function(data) {
+    if (data.image) {
+        var img = document.createElement('img');
+        img.src = 'data:image/jpeg;base64,' + data.image;
+        document.body.appendChild(img); // Or append to a specific container
+    }
+});
+    </script>
+</body>
+
+</html>

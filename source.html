@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI QUEST</title>
+    <style>
+        body, html {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url('pngtree-great-outdoors-digital-painting-4k-landscape-of-nature-with-trees-mountains-image_15699422.jpg');
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            background-size: cover; /* This will make the background cover the entire screen */
+            background-position: center; /* Center the background image */
+            background-repeat: no-repeat;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        .chat-container {
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 1000px; /* Set width to 1000px */
+            height: 80%;
+            max-height: 500px; /* Limit maximum height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .chat-container p {
+            margin: 10px 0;
+        }
+        input[type="text"], select {
+            width: calc(70% - 20px);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 30px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-top: 20px; /* Adjusted margin */
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        select {
+            appearance: none;
+            background-color: #f7f7f7;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 16px;
+            padding-right: 30px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            height: 42px;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
+        select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Styles for sidebar */
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            border-radius: 15px;
+        }
+
+        .sidebar a {
+            padding: 10px 15px;
+            text-decoration: none;
+            font-size: 23px;
+            color: #FFFFFF;
+            display: block;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .sidebar a:hover {
+            color: #f1f1f1;
+        }
+
+        .sidebar-toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 40px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 2;
+            color: #00ffffff;
+            background-color: #333;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar toggle button -->
+    <div class="sidebar-toggle-btn" onclick="toggleSidebar()">&#9776;</div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <a href="home.html">Home</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="ttgen.html">Timetable Gen</a>
+        <a href='#'>Source</a>
+        <a href='aiquest.html'>AI Quest</a>
+        <a href="ocr.html">Img-Text</a>
+        <a href="notes.html">Notes</a>
+        <a href="summarizer.html">summarizer</a>
+        <a href="chat.html">Chat</a>
+    </div>
+
+    <!-- Main content -->
+    <div class="chat-container">
+        <p style="font-size: 18px; font-weight: bold;">AI QUEST: Hello! Please enter your preferred language:</p>
+        <input type="text" id="languageInput" placeholder="Enter Language [English,Tamil,Kannada,Malayalam,Telugu,Hindi.]">
+        <button onclick="askForContent()">Submit</button>
+        <p id="response"></p>
+    </div>
+
+    <script>
+        // Function to open/close sidebar
+        function toggleSidebar() {
+            var sidebar = document.getElementById("sidebar");
+            if (sidebar.style.width === "230px") {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        }
+
+        // Function to open sidebar
+        function openSidebar() {
+            document.getElementById("sidebar").style.width = "230px";
+        }
+
+        // Function to close sidebar
+        function closeSidebar() {
+            document.getElementById("sidebar").style.width = "0";
+        }
+
+        function askForContent() {
+            var language = document.getElementById("languageInput").value;
+            var response = document.getElementById("response");
+            if (language.trim() === "") {
+                response.innerHTML = "AI QUEST: Please enter a language.";
+            } else {
+                response.innerHTML = "AI QUEST: Nice! You entered " + language + ". Now, would you like to see a video or text?";
+                showOptions();
+            }
+        }
+
+        function showOptions() {
+            var selectElement = document.createElement("select");
+            selectElement.setAttribute("id", "contentSelect");
+            selectElement.innerHTML = `
+                <option value="" disabled selected>Select Option</option>
+                <option value="video">Video</option>
+                <option value="text">Text</option>
+            `;
+            selectElement.addEventListener("change", function() {
+                var selectedOption = this.value;
+                var language = document.getElementById("languageInput").value;
+                var response = document.getElementById("response");
+                if (selectedOption === "video") {
+                    var videos = getVideosForLanguage(language);
+                    if (videos.length > 0) {
+                        var videoList = "<ul>";
+                        videos.forEach(function(video) {
+                            videoList += "<li><a href='" + video.url + "' target='_blank'>" + video.title + "</a></li>";
+                        });
+                        videoList += "</ul>";
+                        response.innerHTML = "AI QUEST: Here are some videos in " + language + ":<br>" + videoList;
+                    } else {
+                        response.innerHTML = "AI QUEST: Sorry, no videos found for " + language + ".";
+                    }
+                } else if (selectedOption === "text") {
+                    var textResources = getTextResourcesForLanguage(language);
+                    if (textResources.length > 0) {
+                        var textList = "<ul>";
+                        textResources.forEach(function(textResource) {
+                            textList += "<li><a href='" + textResource.url + "' target='_blank'>" + textResource.title + "</a></li>";
+                        });
+                        textList += "</ul>";
+                        response.innerHTML = "AI QUEST: Here are some text resources in " + language + ":<br>" + textList;
+                    } else {
+                        response.innerHTML = "AI QUEST: Sorry, no text resources found for " + language + ".";
+                    }
+                }
+            });
+
+            document.querySelector(".chat-container").appendChild(selectElement);
+        }
+
+        function getVideosForLanguage(language) {
+            var videos = [];
+            if (language.toLowerCase() === "english") {
+                videos = [
+                    { title: "class 12 by unacademy", url: "https://www.youtube.com/@class12byunacademy" },
+                    { title: "Physics Wallah English", url: "https://www.youtube.com/@EnglishPW" },
+                    { title: "Humanities Adda247", url: "https://www.youtube.com/@humanitiesadda247" },
+                    { title: "Vedantu Class 9 & 10", url: "https://www.youtube.com/@VedantuClass910" },
+                    { title: "Best Eduhub", url: "https://www.youtube.com/@besteduhub" },
+                    { title: "Vedantu JEE English", url: "https://www.youtube.com/@Vedantu_JEE_English" }
+                ];
+            } else if (language.toLowerCase() === "tamil") {
+                videos = [
+                    { title: "Learn with Rohini", url: "https://www.youtube.com/@learnwithrohini" },
+                    { title: "MurugaMP", url: "https://www.youtube.com/@MurugaMP" },
+                    { title: "Tamil Enadayaalam", url: "https://www.youtube.com/@TamilEnadayaalam" },
+                    { title: "PRK Academy Kallakurichi", url: "https://www.youtube.com/@prkacademykallakurichi" },
+                    { title: "Vedantu Master Tamil",url: "https://www.youtube.com/@Master_tamil"},
+                    { title: "Learning Pot Academy",url: "https://www.youtube.com/@LearningpotAcademy"},
+                    { title: "swathy'study planet",url: "https://www.youtube.com/@SwathystudyPlanet" },
+                    { title: "Xylem CBSE 10 Tamil",url: "https://www.youtube.com/@XylemCBSE10Tamil"},
+                    { title: "Square Root Tution Centre",url: "https://www.youtube.com/@squareroottuitioncentre1517"}
+                ];
+            } else if (language.toLowerCase() === "malayalam") {
+                videos = [
+                    { title: "Pachamarathanal", url: "https://www.youtube.com/@Pachamarathanal" },
+                    { title: "Math Crusader", url: "https://www.youtube.com/@mathcrusader" },
+                    { title: "Vedantu Malayalam", url: "https://www.youtube.com/@VedantuMalayalam" },
+                    { title: "Eduport Class 10 CBSE", url: "https://www.youtube.com/@eduportclass10cbse" }
+                ];
+            } else if (language.toLowerCase() === "telugu") {
+                videos = [
+                    { title: "PW Telugu", url: "https://www.youtube.com/@PWTelugu" },
+                    { title: "Vedantu Telugu JEE", url: "https://www.youtube.com/@VedantuTeluguJEE" },
+                    { title: "Vedantu Telugu", url: "https://www.youtube.com/@vedantutelugu" },
+                    { title: "Vedantu Telugu 8 9 10", url: "https://www.youtube.com/@VedantuTelugu8910" },
+                    { title: "KVSK Physics", url: "https://www.youtube.com/@kvskphysics" },
+                    { title: "Studious Official", url: "https://www.youtube.com/@StudiousOfficial" }
+                ];
+            } else if (language.toLowerCase() === "kannada") {
+                videos = [
+                    { title: "PW Kannada", url: "https://www.youtube.com/@PWKannada" },
+                    { title: "Kannada Lessons and Poems", url: "https://www.youtube.com/@Kannadalessonsandpoems" },
+                    { title: "SSLC Parikshe", url: "https://www.youtube.com/@SSLCPARIKSHE" },
+                    { title: "Simplified Minds", url: "https://www.youtube.com/@simplifiedminds" },
+                    { title: "KALIYUGA CLASSES", url: "https://www.youtube.com/@KALIYUGACLASSES" }
+                ];
+            } else if (language.toLowerCase() === "hindi") {
+                videos = [
+                    { title: "PW Hindi Medium", url: "https://www.youtube.com/@PW-HindiMedium" },
+                    { title: "NEET Wallah Hindi", url: "https://www.youtube.com/@NEETWallahHindi" },
+                    { title: "GATE Wallah EE EC CS IN", url: "https://www.youtube.com/@GATEWallah_EE_EC_CS_IN" },
+                    { title: "PW Hindi Foundation", url: "https://www.youtube.com/@PWHindiFoundation" },
+                    { title: "Dear Sir", url: "https://www.youtube.com/@DearSir" }
+                ];
+            }
+            // Add more language cases as needed
+            return videos;
+        }
+
+        function getTextResourcesForLanguage(language) {
+            var textResources = [];
+            if (language.toLowerCase() === "english") {
+                textResources = [
+                     { title: "Quizlet", url: "https://quizlet.com/" },
+                     { title: "byjus", url: "https://byjus.com/cbse/cbse-books/" },
+                     { title: "vedantu", url: "https://www.vedantu.com/study-material" },
+                     { title: "student module", url: "https://edustud.nic.in/edu/support_material_2023_24.html" },
+                     { title: "ncert", url: "https://ncert.nic.in/textbook.php" },
+                     { title: "cbse", url: "https://cbseacademic.nic.in/skill-education-books.html" }
+                ];
+            } else if (language.toLowerCase() === "tamil") {
+                textResources = [
+                    { title: "Nammakalvi", url: "https://nammakalvi.com" },
+                    { title: "Kalvikadal", url: "https://www.kalvikadal.in" },
+                    { title: "CBSE Tamil", url: "https://cbsetamil.com/" },
+                    { title: "padasalai", url: "https://www.padasalai.net/" }
+                ];
+            } else if (language.toLowerCase() === "malayalam") {
+                textResources = [
+                    { title: "OSSAE Bodhanam", url: "https://ossaebodhanam.org/malayalam-study-materials" },
+                    { title: "nios", url: "https://www.nios.ac.in/online-course-material/secondary-courses/malayalam-medium.aspx" },
+                     { title: "shenischool", url: "https://www.shenischool.in/2023/02/sslc-kerala-padavali-notes-2022-2023_16.html" },
+                     { title: "education observer", url: "https://www.educationobserver.com/forum/showthread.php?tid=23080" },
+                     { title: "samagra", url: "https://samagra.kite.kerala.gov.in/" },
+                     { title: "exam winner", url: "https://examwinner.com/study-materials/class-11-study-materials/" }
+                ];
+            } else if (language.toLowerCase() === "telugu") {
+                textResources = [
+                    { title: "Sakshi Education", url: "https://education.sakshi.com/en/ap-10th/study-material/telugu" },
+                     { title: "vyomaonline", url: "https://vyomaonline.com/studymaterial/" },
+                    { title: "vijayam publication", url: "https://www.vijayampublications.com/product-page/telugu-study-material-and-question-bank-for-all-degree-courses" },
+                     { title: "estudy material", url: "https://www.estudymaterial.com/" },
+                     { title: "scribd", url: "https://www.scribd.com/doc/173032619/Group-I-Study-Material-Telugu-Medium-English-Medium-Sakshieducation2" }
+                     
+                ];
+            } else if (language.toLowerCase() === "kannada") {
+                textResources = [
+                    { title: "KSEEB Solutions", url: "https://www.kseebsolutions.com/2nd-puc-kannada-textbook-answers/" },
+                    { title: "karnataka textbook society", url: "https://ktbs.kar.nic.in/New/index.html#!/textbook" },
+                     { title: "inya trust downloads", url: "https://www.inyatrust.co.in/2018/10/kersm.html" },
+                    { title: "byjus", url: "https://byjus.com/kseeb/karnataka-state-board-books/" },
+                     { title: "estudy material", url: "https://www.estudymaterial.com/" },
+                     { title: "KSEEB soln", url: "https://www.kseebsolutions.com/" },
+                ];
+            } else if (language.toLowerCase() === "hindi") {
+                textResources = [
+                    { title: "vedantu", url: "https://www.vedantu.com/cbse/ncert-notes" },
+                    { title: "GK hindi gyan", url: "https://gk-hindigyan.com/ncert-notes-in-hindi/" },
+                     { title: "CBSE academics", url: "https://cbseacademic.nic.in/skill-education-books.html" },
+                    { title: "student module", url: "https://edustud.nic.in/edu/support_material_2022_23.html" },
+                     { title: "byjus", url: "https://byjus.com/ncert/ncert-books-in-hindi-pdf-download/" },
+                     { title: "NCERT", url: "https://ncert.nic.in/textbook.php" },
+                ];
+            }
+            // Add more language cases as needed
+            return textResources;
+        }
+    </script>
+</body>
+</html>

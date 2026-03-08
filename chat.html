@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI QUEST</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: 100%;
+            max-width: 1250px; /* Adjust as needed */
+            margin-left: 0px; /* Width of the sidebar */
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px; /* Initially hidden */
+            height: 100vh;
+            width: 200px;
+            background-color: #333;
+            padding-top: 20px;
+            transition: left 0.3s ease;
+            z-index: 2;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 25px;
+        }
+
+        .sidebar-toggle-btn {
+            position: absolute;
+            top: 5px;
+            left: 40px;
+            width: 20px;
+            height: 20px;
+            background-color: #333;
+            border: none;
+            cursor: pointer;
+            z-index: 3;
+        }
+
+        .sidebar-toggle-btn::before,
+        .sidebar-toggle-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 2px;
+            background-color: #fff;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-toggle-btn::before {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .sidebar-toggle-btn::after {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+
+        .sidebar.open .sidebar-toggle-btn::before,
+        .sidebar.open .sidebar-toggle-btn::after {
+            transform: translate(-50%, -50%) rotate(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <a href="home.html">Home</a>
+            <a href="tasks.html">Tasks</a>
+            <a href="ttgen.html">Timetable Gen</a>
+            <a href="source.html">Source</a>
+            <a href="aiquest.html">AI Quest</a>
+            <a href="ocr.html">Img-Text</a>
+            <a href="notes.html">Notes</a>
+            <a href="summarizer.html">summarizer</a>
+            <a href="#">Chat</a>
+        </div>
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()"></button>
+        <div class="iframe-container">
+            <iframe src="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
