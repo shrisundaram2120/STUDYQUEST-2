@@ -3,131 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI QUEST</title>
+    <title>StudyQuest | Chat</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="stylesheet" href="studyquest.css">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            height: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .iframe-container {
-            width: 100%;
-            height: 100%;
-            max-width: 1250px; /* Adjust as needed */
-            margin-left: 0px; /* Width of the sidebar */
-        }
-
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: -250px; /* Initially hidden */
-            height: 100vh;
-            width: 200px;
-            background-color: #333;
-            padding-top: 20px;
-            transition: left 0.3s ease;
-            z-index: 2;
-        }
-
-        .sidebar.open {
-            left: 0;
-        }
-
-        .sidebar a {
-            display: block;
-            padding: 10px 15px;
-            text-decoration: none;
-            color: #fff;
-            font-size: 18px;
-            margin-bottom: 10px;
-            text-align: center;
-            font-size: 25px;
-        }
-
-        .sidebar-toggle-btn {
-            position: absolute;
-            top: 5px;
-            left: 40px;
-            width: 20px;
-            height: 20px;
-            background-color: #333;
-            border: none;
-            cursor: pointer;
-            z-index: 3;
-        }
-
-        .sidebar-toggle-btn::before,
-        .sidebar-toggle-btn::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 2px;
-            background-color: #fff;
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar-toggle-btn::before {
-            transform: translate(-50%, -50%) rotate(45deg);
-        }
-
-        .sidebar-toggle-btn::after {
-            transform: translate(-50%, -50%) rotate(-45deg);
-        }
-
-        .sidebar.open .sidebar-toggle-btn::before,
-        .sidebar.open .sidebar-toggle-btn::after {
-            transform: translate(-50%, -50%) rotate(0);
-        }
+        body { --page-image: url('remembering-digital-art-landscape-4k_1540751311.jpg.webp'); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar" id="sidebar">
-            <a href="home.html">Home</a>
-            <a href="tasks.html">Tasks</a>
-            <a href="ttgen.html">Timetable Gen</a>
-            <a href="source.html">Source</a>
-            <a href="aiquest.html">AI Quest</a>
-            <a href="ocr.html">Img-Text</a>
-            <a href="notes.html">Notes</a>
-            <a href="summarizer.html">summarizer</a>
-            <a href="#">Chat</a>
-        </div>
-        <button class="sidebar-toggle-btn" onclick="toggleSidebar()"></button>
-        <div class="iframe-container">
-            <iframe src="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" frameborder="0"></iframe>
-        </div>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Chat</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable Gen</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a class="active" href="chat.html">Chat</a>
+            </nav>
+        </aside>
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <h2>Chat</h2>
+                    <p>Open the external chat assistant inside the StudyQuest layout.</p>
+                </div>
+            </div>
+            <section class="card embed-card">
+                <div class="embed-header">
+                    <div>
+                        <p class="eyebrow">Embedded tool</p>
+                        <h3 style="margin-bottom: 8px;">Study chat</h3>
+                        <p class="muted">Use this when you need back-and-forth help while studying.</p>
+                    </div>
+                    <a class="btn btn-primary" href="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" target="_blank" rel="noopener noreferrer">Open in new tab</a>
+                </div>
+                <div class="embed-frame-wrap">
+                    <iframe class="embed-frame" src="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" title="Chat"></iframe>
+                </div>
+            </section>
+        </main>
     </div>
-
+    <script src="studyquest.js"></script>
     <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
-        }
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
     </script>
 </body>
 </html>

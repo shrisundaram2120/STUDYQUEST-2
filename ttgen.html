@@ -1,223 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Timetable Generator</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    margin: 0;
-    padding: 0;
-    background-image: url('HD-wallpaper-the-path-of-tomorrow-alone-artist-artwork-digital-art.jpg');
-    background-size: cover; /* This will make the background cover the entire screen */
-            background-position: center; /* Center the background image */
-            background-repeat: no-repeat; /* Prevent the background image from repeating */
-    
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .container {
-    max-width: 80%;
-    width: 1000px; /* Fixed width for the container */
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 20px;
-    background-color: rgba(255, 255, 255, 0.5);
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  }
-  h2 {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 45%;
-  }
-  label {
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
-  input[type="time"], input[type="number"], input[type="text"] {
-    margin-bottom: 10px;
-    padding: 10px;
-    width: 100%;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box;
-  }
-  button {
-    padding: 8px 12px; /* Adjusted padding */
-    background-color: #4CAF50;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    font-size: 14px; /* Adjusted font size */
-  }
-  button:hover {
-    background-color: #45a049;
-  }
-  #timetable {
-    width: 45%;
-    border-collapse: collapse;
-  }
-  #timetable th, #timetable td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
-  }
-  #timetable th {
-    background-color: #f2f2f2;
-  }
-  #sidebar {
-    height: 100%;
-    width: 0;
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: #333;
-    padding-top: 20px;
-    transition: all 0.3s ease;
-    overflow-x: hidden;
-  }
-  #sidebar a {
-    padding: 10px 15px;
-    text-decoration: none;
-    font-size: 23px;
-    text-align: center;
-    color: #fff;
-    display: block;
-    margin-bottom: 5px;
-    margin-top: 10px; /* Added margin-top */
-  }
-  #content {
-    margin-left: 0;
-    padding: 20px;
-    transition: all 0.3s ease;
-    width: 45%; /* Fixed width for the content */
-  }
-  #sidebarToggleBtn {
-    position: absolute;
-    top: 5px;
-    left: 40px;
-    background-color: #333;
-    color: white;
-    border: none;
-    border-radius: 30%;
-    padding: 5px; /* Adjusted padding */
-    cursor: pointer;
-    z-index: 1;
-    font-size: 16px; /* Adjusted font size */
-  }
-  #sidebarToggleBtn:hover {
-    background-color: #000;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Timetable Generator</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('HD-wallpaper-the-path-of-tomorrow-alone-artist-artwork-digital-art.jpg'); }
+    </style>
 </head>
 <body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Timetable generator</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a class="active" href="ttgen.html">Timetable Gen</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+            </nav>
+        </aside>
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <h2>Timetable generator</h2>
+                    <p>Split your available study time across multiple tasks automatically.</p>
+                </div>
+            </div>
+            <section class="two-column">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Input</p>
+                            <h3 style="margin-bottom: 8px;">Plan a session</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="inline-form">
+                            <input class="field" id="startTime" type="time">
+                            <input class="field" id="endTime" type="time">
+                        </div>
+                        <input class="field" id="taskNames" type="text" placeholder="Tasks separated by commas">
+                        <button class="btn btn-primary" id="generateTimetableBtn" type="button">Generate timetable</button>
+                        <div class="status-line" id="timetableStatus"></div>
+                    </div>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Advice</p>
+                            <h3 style="margin-bottom: 8px;">Use realistic blocks</h3>
+                        </div>
+                    </div>
+                    <ul class="tips-list">
+                        <li>Keep sessions between 60 and 180 minutes for best results.</li>
+                        <li>Separate tasks with commas, for example: Maths revision, Chemistry notes, English reading.</li>
+                        <li>Add breaks manually if you want longer study plans.</li>
+                    </ul>
+                </article>
+            </section>
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Output</p>
+                        <h3 style="margin-bottom: 8px;">Generated timetable</h3>
+                    </div>
+                </div>
+                <div class="table-shell">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Time slot</th><th>Task</th></tr>
+                        </thead>
+                        <tbody id="timetableBody">
+                            <tr><td colspan="2" class="muted">Generate a timetable to see your schedule here.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
 
-<div id="sidebar">
-  <a href="index.html">Home</a>
-  <a href="tasks.html">Tasks</a>
-  <a href="#">Timetable Gen</a>
-  <a href="source.html">Sources</a>
-  <a href="aiquest.html">AI Quest</a>
-  <a href="ocr.html">Img-Text</a>
-  <a href="notes.html">Notes</a>
-  <a href="summarizer.html">summarizer</a>
-  <a href="chat.html">Chat</a>
-</div>
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
 
-<div class="container">
-  <div id="content">
-    <h2>Timetable Generator</h2>
+        document.getElementById('generateTimetableBtn').addEventListener('click', () => {
+            const startValue = document.getElementById('startTime').value;
+            const endValue = document.getElementById('endTime').value;
+            const taskNames = document.getElementById('taskNames').value.split(',').map((task) => task.trim()).filter(Boolean);
+            const status = document.getElementById('timetableStatus');
+            const tbody = document.getElementById('timetableBody');
 
-    <form id="timetableForm">
-      <label for="startTime">Start Time:</label>
-      <input type="time" id="startTime" name="startTime" required>
+            if (!startValue || !endValue || !taskNames.length) {
+                status.textContent = 'Enter a start time, end time, and at least one task.';
+                return;
+            }
 
-      <label for="endTime">End Time:</label>
-      <input type="time" id="endTime" name="endTime" required>
+            const start = new Date(`1970-01-01T${startValue}:00`);
+            const end = new Date(`1970-01-01T${endValue}:00`);
+            if (end <= start) {
+                status.textContent = 'End time must be later than start time.';
+                return;
+            }
 
-      <label for="tasks">Tasks:</label>
-      <input type="text" id="tasks" name="tasks" placeholder="Enter tasks separated by commas" required>
+            const totalMinutes = Math.floor((end - start) / 60000);
+            const blockMinutes = Math.max(1, Math.floor(totalMinutes / taskNames.length));
+            let current = new Date(start);
 
-      <button type="button" onclick="generateTimetable()">Generate Timetable</button>
-    </form>
-  </div>
+            tbody.innerHTML = '';
+            taskNames.forEach((task, index) => {
+                const next = index === taskNames.length - 1 ? new Date(end) : new Date(current.getTime() + blockMinutes * 60000);
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${formatTime(current)} - ${formatTime(next)}</td><td>${task}</td>`;
+                tbody.appendChild(row);
+                current = next;
+            });
 
-  <table id="timetable">
-    <thead>
-      <tr>
-        <th>Time Slot</th>
-        <th>Task</th>
-      </tr>
-    </thead>
-    <tbody id="timetableBody"></tbody>
-  </table>
-</div>
-
-<button id="sidebarToggleBtn" onclick="toggleSidebar()">☰</button>
-
-<script>
-function toggleSidebar() {
-  var sidebar = document.getElementById("sidebar");
-  var content = document.getElementById("content");
-  var sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
-
-  if (sidebar.style.width === "0px" || sidebar.style.width === "") {
-    sidebar.style.width = "200px";
-    content.style.marginLeft = "200px";
-  } else {
-    sidebar.style.width = "0";
-    content.style.marginLeft = "0";
-  }
-}
-
-function generateTimetable() {
-  var startTime = document.getElementById("startTime").value;
-  var endTime = document.getElementById("endTime").value;
-  var tasks = document.getElementById("tasks").value.split(",").map(task => task.trim()); // Split tasks by comma and trim whitespace
-  
-  var start = new Date("1970-01-01T" + startTime);
-  var end = new Date("1970-01-01T" + endTime);
-  
-  var current = new Date(start);
-  var timetableBody = document.getElementById("timetableBody");
-  timetableBody.innerHTML = "";
-  
-  var taskIndex = 0;
-  var totalTime = (end.getTime() - start.getTime()) / 1000; // Total time in seconds
-  var timePerTask = Math.floor(totalTime / tasks.length); // Time per task in seconds
-  
-  while (current <= end && taskIndex < tasks.length) {
-    // Calculate the end time of the current task
-    var endTime = new Date(current.getTime() + timePerTask * 1000);
-    var endTimeSlot = endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
-    // Add the current task to the timetable
-    var taskRow = document.createElement("tr");
-    taskRow.innerHTML = "<td>" + current.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + " - " + endTimeSlot + "</td><td>" + tasks[taskIndex] + "</td>";
-    timetableBody.appendChild(taskRow);
-    
-    // Move to the next task
-    taskIndex++;
-    
-    // Update current time to the end of the task
-    current = new Date(endTime.getTime());
-  }
-}
-</script>
-
+            status.textContent = `Created ${taskNames.length} timetable blocks.`;
+        });
+    </script>
 </body>
 </html>
