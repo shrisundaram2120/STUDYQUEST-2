@@ -1,10 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Welcome</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body {
@@ -19,11 +21,11 @@
                 <img src="studyquest-high-resolution-logo-transparent.png" alt="StudyQuest logo" style="width: 180px; max-width: 100%;">
                 <p class="eyebrow">Study planner</p>
                 <h1>Build a calmer study routine.</h1>
-                <p>StudyQuest now saves your learner profile, your notes, your tasks, and your focus workflow directly in the browser so you can come back and continue where you left off.</p>
+                <p>StudyQuest keeps your learner profile, notes, tasks, focus sessions, timetables, and smart study outputs in your browser so the whole workspace comes back with you.</p>
                 <div class="stack" style="margin-top: 28px;">
                     <div class="list-item">Create a learner profile with class, subjects, and goals.</div>
-                    <div class="list-item">Track tasks and timed study sessions from one dashboard.</div>
-                    <div class="list-item">Keep subject notes organized without losing progress on refresh.</div>
+                    <div class="list-item">Track tasks, notes, focus time, schedules, and study progress.</div>
+                    <div class="list-item">Generate summaries, flashcards, quizzes, and backup your data.</div>
                 </div>
             </div>
             <div class="onboarding-form">
@@ -48,13 +50,13 @@
                             <option>College</option>
                             <option>Other</option>
                         </select>
-                        <input class="field" id="email" type="email" placeholder="Email address" required>
+                        <input class="field" id="email" type="text" inputmode="email" placeholder="Email address" required>
                         <input class="field" id="goal" type="text" placeholder="Main academic goal" required>
                         <input class="field full" id="subjects" type="text" placeholder="Interested subjects, separated by commas" required>
                         <textarea class="textarea full" id="studyStyle" placeholder="What do you want help with most? Example: revision planning, concentration, daily consistency"></textarea>
                     </div>
                     <button class="btn btn-primary" type="submit">Enter StudyQuest</button>
-                    <p class="footer-note">This setup is stored locally in your browser, so it works without a backend.</p>
+                    <p class="footer-note">This setup is stored locally in your browser. You can export or restore it later from Settings.</p>
                 </form>
             </div>
         </section>
@@ -86,3 +88,4 @@
     </script>
 </body>
 </html>
+

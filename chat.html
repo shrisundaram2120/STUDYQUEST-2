@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Chat</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body { --page-image: url('remembering-digital-art-landscape-4k_1540751311.jpg.webp'); }
@@ -21,40 +23,139 @@
                 <a href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a class="active" href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>Chat</h2>
-                    <p>Open the external chat assistant inside the StudyQuest layout.</p>
+                    <p>Prepare a focused study prompt, then use the embedded assistant for back-and-forth help.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
                 </div>
             </div>
-            <section class="card embed-card">
-                <div class="embed-header">
-                    <div>
-                        <p class="eyebrow">Embedded tool</p>
-                        <h3 style="margin-bottom: 8px;">Study chat</h3>
-                        <p class="muted">Use this when you need back-and-forth help while studying.</p>
+
+            <section class="two-column">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Prompt builder</p>
+                            <h3 style="margin-bottom: 8px;">Create a study request</h3>
+                        </div>
                     </div>
-                    <a class="btn btn-primary" href="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" target="_blank" rel="noopener noreferrer">Open in new tab</a>
-                </div>
-                <div class="embed-frame-wrap">
-                    <iframe class="embed-frame" src="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" title="Chat"></iframe>
-                </div>
+                    <div class="stack">
+                        <select class="select" id="promptMode">
+                            <option value="Explain this topic step by step">Explain this topic step by step</option>
+                            <option value="Quiz me and wait for my answer">Quiz me and wait for my answer</option>
+                            <option value="Create a revision plan">Create a revision plan</option>
+                            <option value="Find gaps in my notes">Find gaps in my notes</option>
+                        </select>
+                        <select class="select" id="noteSource">
+                            <option value="">Optional note source</option>
+                        </select>
+                        <textarea class="textarea short" id="promptContext" placeholder="Topic, chapter, question, or pasted context"></textarea>
+                        <button class="btn btn-primary" id="buildPromptBtn" type="button">Build prompt</button>
+                        <textarea class="textarea short" id="generatedPrompt" placeholder="Your generated prompt will appear here"></textarea>
+                        <div class="button-row">
+                            <button class="btn btn-secondary" id="copyPromptBtn" type="button">Copy prompt</button>
+                            <button class="btn btn-ghost" id="sendPromptToAiQuestBtn" type="button">AI Quest</button>
+                        </div>
+                        <div class="status-line" id="chatStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card embed-card">
+                    <div class="embed-header">
+                        <div>
+                            <p class="eyebrow">Embedded tool</p>
+                            <h3 style="margin-bottom: 8px;">Study chat</h3>
+                            <p class="muted">Paste the prepared prompt into the chat assistant when you want a conversation.</p>
+                        </div>
+                        <a class="btn btn-primary" href="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" target="_blank" rel="noopener noreferrer">Open in new tab</a>
+                    </div>
+                    <div class="embed-frame-wrap">
+                        <iframe class="embed-frame" src="https://pkishore08-online-multiplayer-ai-chat1.static.hf.space" title="Chat"></iframe>
+                    </div>
+                </article>
             </section>
         </main>
     </div>
     <script src="studyquest.js"></script>
     <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const profile = StudyQuest.getProfile();
+        const notes = StudyQuest.getNotes();
+        const noteSource = document.getElementById('noteSource');
+        const promptContext = document.getElementById('promptContext');
+        const generatedPrompt = document.getElementById('generatedPrompt');
+        const chatStatus = document.getElementById('chatStatus');
+
+        noteSource.innerHTML += notes.map((note) => `<option value="${note.id}">${e(note.name)}</option>`).join('');
+
+        noteSource.addEventListener('change', () => {
+            const note = notes.find((item) => item.id === noteSource.value);
+            if (note) {
+                promptContext.value = note.content;
+            }
+        });
+
+        document.getElementById('buildPromptBtn').addEventListener('click', () => {
+            const mode = document.getElementById('promptMode').value;
+            const context = promptContext.value.trim();
+            const subjects = profile.subjects?.join(', ') || 'my subjects';
+            generatedPrompt.value = [
+                `${mode}.`,
+                `Learner profile: ${profile.className}, goal: ${profile.goal}, subjects: ${subjects}.`,
+                context ? `Material:\n${context}` : 'Ask me for the topic first if you need more context.',
+                'Keep the answer clear, exam-focused, and ask one follow-up question at the end.'
+            ].join('\n\n');
+            chatStatus.textContent = 'Prompt built.';
+        });
+
+        document.getElementById('copyPromptBtn').addEventListener('click', async () => {
+            if (!generatedPrompt.value.trim()) {
+                chatStatus.textContent = 'Build a prompt first.';
+                chatStatus.className = 'status-line error';
+                return;
+            }
+            generatedPrompt.select();
+            try {
+                await navigator.clipboard.writeText(generatedPrompt.value);
+                chatStatus.textContent = 'Prompt copied.';
+                chatStatus.className = 'status-line';
+            } catch (error) {
+                chatStatus.textContent = 'Prompt selected. Use Ctrl+C to copy it.';
+                chatStatus.className = 'status-line';
+            }
+        });
+
+        document.getElementById('sendPromptToAiQuestBtn').addEventListener('click', () => {
+            if (!generatedPrompt.value.trim()) {
+                chatStatus.textContent = 'Build a prompt first.';
+                chatStatus.className = 'status-line error';
+                return;
+            }
+            StudyQuest.saveAiDraft({
+                title: 'Chat prompt',
+                text: generatedPrompt.value,
+                source: 'chat'
+            });
+            window.location.href = 'aiquest.html';
+        });
     </script>
 </body>
 </html>

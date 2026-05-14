@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | AI Quest</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body { --page-image: url('pngtree-great-outdoors-digital-painting-4k-landscape-of-nature-with-trees-mountains-image_15699422.jpg'); }
@@ -21,28 +23,75 @@
                 <a href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a class="active" href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>AI Quest</h2>
-                    <p>Open the embedded tutor tool directly inside StudyQuest.</p>
+                    <p>Generate quick revision summaries, flashcards, quiz prompts, and plain-language explanations from your own notes.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
                 </div>
             </div>
-            <section class="card embed-card">
+
+            <section class="ai-tool-grid">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Source</p>
+                            <h3 style="margin-bottom: 8px;">Study material</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="sourceTitle" type="text" placeholder="Topic title">
+                        <div class="inline-form">
+                            <select class="select" id="noteSelect">
+                                <option value="">Load from Notes</option>
+                            </select>
+                            <button class="btn btn-secondary" id="loadNoteBtn" type="button">Load note</button>
+                        </div>
+                        <textarea class="textarea" id="sourceText" placeholder="Paste a chapter, notes, OCR text, or source material here..."></textarea>
+                        <div class="button-row">
+                            <button class="btn btn-primary" id="summaryBtn" type="button">Summary</button>
+                            <button class="btn btn-secondary" id="flashcardsBtn" type="button">Flashcards</button>
+                            <button class="btn btn-secondary" id="quizBtn" type="button">Quiz</button>
+                            <button class="btn btn-ghost" id="explainBtn" type="button">Explain simply</button>
+                        </div>
+                        <div class="status-line" id="aiStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Output</p>
+                            <h3 style="margin-bottom: 8px;" id="outputTitle">Ready when you are</h3>
+                        </div>
+                        <button class="btn btn-ghost" id="saveOutputBtn" type="button">Save to Notes</button>
+                    </div>
+                    <div class="ai-output" id="aiOutput">
+                        <div class="empty">Generated study material will appear here.</div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="card embed-card" style="margin-top: 22px;">
                 <div class="embed-header">
                     <div>
-                        <p class="eyebrow">Embedded tool</p>
+                        <p class="eyebrow">External tutor</p>
                         <h3 style="margin-bottom: 8px;">Learning assistant</h3>
-                        <p class="muted">If the tool loads slowly on mobile, open it in a new tab.</p>
+                        <p class="muted">Use the embedded tutor when you want back-and-forth help beyond local generation.</p>
                     </div>
                     <a class="btn btn-primary" href="https://pkishore08-ai-quest.hf.space" target="_blank" rel="noopener noreferrer">Open in new tab</a>
                 </div>
@@ -54,7 +103,144 @@
     </div>
     <script src="studyquest.js"></script>
     <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const notes = StudyQuest.getNotes();
+        const noteSelect = document.getElementById('noteSelect');
+        const sourceTitle = document.getElementById('sourceTitle');
+        const sourceText = document.getElementById('sourceText');
+        const aiStatus = document.getElementById('aiStatus');
+        const aiOutput = document.getElementById('aiOutput');
+        const outputTitle = document.getElementById('outputTitle');
+        let currentOutputText = '';
+        let currentOutputName = '';
+
+        noteSelect.innerHTML += notes.map((note) => `<option value="${note.id}">${e(note.name)}</option>`).join('');
+
+        const draft = StudyQuest.getAiDraft();
+        if (draft?.text) {
+            sourceTitle.value = draft.title || 'Imported study material';
+            sourceText.value = draft.text;
+            StudyQuest.clearAiDraft();
+            aiStatus.textContent = 'Imported material is ready.';
+        }
+
+        function getInputText() {
+            return sourceText.value.trim();
+        }
+
+        function setOutput(title, html, rawText) {
+            outputTitle.textContent = title;
+            aiOutput.innerHTML = html;
+            currentOutputText = rawText;
+            currentOutputName = title;
+        }
+
+        function requireText() {
+            if (!getInputText()) {
+                aiStatus.textContent = 'Add study material first.';
+                aiStatus.className = 'status-line error';
+                return false;
+            }
+            aiStatus.textContent = '';
+            aiStatus.className = 'status-line';
+            return true;
+        }
+
+        document.getElementById('loadNoteBtn').addEventListener('click', () => {
+            const note = notes.find((item) => item.id === noteSelect.value);
+            if (!note) {
+                aiStatus.textContent = 'Choose a note to load.';
+                aiStatus.className = 'status-line error';
+                return;
+            }
+            sourceTitle.value = note.name;
+            sourceText.value = note.content || '';
+            aiStatus.textContent = 'Note loaded.';
+            aiStatus.className = 'status-line';
+        });
+
+        document.getElementById('summaryBtn').addEventListener('click', () => {
+            if (!requireText()) return;
+            const summary = StudyQuest.summarizeText(getInputText(), 5);
+            setOutput('Revision summary', `<div class="list-item">${StudyQuest.nl2br(summary)}</div>`, `Revision summary\n\n${summary}`);
+        });
+
+        document.getElementById('flashcardsBtn').addEventListener('click', () => {
+            if (!requireText()) return;
+            const cards = StudyQuest.generateFlashcards(getInputText(), 8);
+            if (!cards.length) {
+                setOutput('Flashcards', '<div class="empty">Add a longer passage to generate flashcards.</div>', '');
+                return;
+            }
+            const html = cards.map((card) => `
+                <div class="flashcard">
+                    <strong>${e(card.front)}</strong>
+                    <div class="answer muted">${e(card.back)}</div>
+                    <button class="btn btn-ghost" type="button" data-reveal-card>Reveal answer</button>
+                </div>
+            `).join('');
+            setOutput('Flashcards', html, cards.map((card) => `${card.front}\n${card.back}`).join('\n\n'));
+            aiOutput.querySelectorAll('[data-reveal-card]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    button.closest('.flashcard').classList.toggle('open');
+                    button.textContent = button.closest('.flashcard').classList.contains('open') ? 'Hide answer' : 'Reveal answer';
+                });
+            });
+        });
+
+        document.getElementById('quizBtn').addEventListener('click', () => {
+            if (!requireText()) return;
+            const quiz = StudyQuest.generateQuiz(getInputText(), 6);
+            if (!quiz.length) {
+                setOutput('Practice quiz', '<div class="empty">Add a longer passage to generate quiz questions.</div>', '');
+                return;
+            }
+            const html = quiz.map((item) => `
+                <div class="quiz-card">
+                    <strong>${e(item.question)}</strong>
+                    <textarea class="textarea short" placeholder="Type your answer here"></textarea>
+                    <div class="answer muted hidden">${e(item.answer)}</div>
+                    <button class="btn btn-ghost" type="button" data-reveal-answer>Show answer</button>
+                </div>
+            `).join('');
+            setOutput('Practice quiz', html, quiz.map((item) => `${item.question}\nAnswer: ${item.answer}`).join('\n\n'));
+            aiOutput.querySelectorAll('[data-reveal-answer]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const answer = button.previousElementSibling;
+                    answer.classList.toggle('hidden');
+                    button.textContent = answer.classList.contains('hidden') ? 'Show answer' : 'Hide answer';
+                });
+            });
+        });
+
+        document.getElementById('explainBtn').addEventListener('click', () => {
+            if (!requireText()) return;
+            const explanation = StudyQuest.explainSimply(getInputText());
+            setOutput('Simple explanation', `<div class="list-item">${StudyQuest.nl2br(explanation)}</div>`, explanation);
+        });
+
+        document.getElementById('saveOutputBtn').addEventListener('click', () => {
+            if (!currentOutputText.trim()) {
+                aiStatus.textContent = 'Generate something before saving it.';
+                aiStatus.className = 'status-line error';
+                return;
+            }
+            const allNotes = StudyQuest.getNotes();
+            const topic = sourceTitle.value.trim() || 'Study material';
+            allNotes.push({
+                id: StudyQuest.newId(),
+                name: `${currentOutputName} - ${topic}`,
+                content: currentOutputText,
+                updatedAt: new Date().toISOString()
+            });
+            StudyQuest.saveNotes(allNotes);
+            aiStatus.textContent = 'Saved to Notes.';
+            aiStatus.className = 'status-line';
+        });
     </script>
 </body>
 </html>

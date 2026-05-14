@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Sources</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body { --page-image: url('pngtree-great-outdoors-digital-painting-4k-landscape-of-nature-with-trees-mountains-image_15699422.jpg'); }
@@ -21,31 +23,38 @@
                 <a href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a class="active" href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>Study sources</h2>
-                    <p>Pick a language and open curated video or text resources.</p>
+                    <p>Search curated learning links, save your own resources, and keep bookmarks inside StudyQuest.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
                 </div>
             </div>
             <section class="card" style="margin-bottom: 22px;">
                 <div class="card-header">
                     <div>
                         <p class="eyebrow">Filter</p>
-                        <h3 style="margin-bottom: 8px;">Choose your learning language</h3>
+                        <h3 style="margin-bottom: 8px;">Find resources</h3>
                     </div>
+                    <button class="btn btn-ghost" id="exportBookmarksBtn" type="button">Export bookmarks</button>
                 </div>
                 <div class="inline-form">
                     <select class="select" id="languageSelect"></select>
+                    <input class="field" id="resourceSearch" type="search" placeholder="Search resources">
                 </div>
             </section>
             <section class="resource-grid">
@@ -60,12 +69,46 @@
                     <div class="resource-list" id="textList"></div>
                 </article>
             </section>
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Custom</p>
+                            <h3 style="margin-bottom: 8px;">Add a resource</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="customTitle" type="text" placeholder="Resource title">
+                        <input class="field" id="customUrl" type="url" placeholder="https://example.com">
+                        <select class="select" id="customType">
+                            <option value="Video">Video</option>
+                            <option value="Text">Text</option>
+                            <option value="Practice">Practice</option>
+                        </select>
+                        <button class="btn btn-primary" id="addCustomResourceBtn" type="button">Save resource</button>
+                        <div class="status-line" id="resourceStatus"></div>
+                    </div>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Bookmarks</p>
+                            <h3 style="margin-bottom: 8px;">Saved resources</h3>
+                        </div>
+                    </div>
+                    <div class="list" id="bookmarksList"></div>
+                </article>
+            </section>
         </main>
     </div>
     <script src="studyquest.js"></script>
     <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+        StudyQuest.attachEnterSubmit('customUrl', 'addCustomResourceBtn');
 
+        const e = StudyQuest.escapeHTML;
         const resources = {
             English: {
                 video: [
@@ -144,19 +187,116 @@
         };
 
         const languageSelect = document.getElementById('languageSelect');
+        const resourceSearch = document.getElementById('resourceSearch');
         const videoList = document.getElementById('videoList');
         const textList = document.getElementById('textList');
+        const bookmarksList = document.getElementById('bookmarksList');
+        const resourceStatus = document.getElementById('resourceStatus');
+        let bookmarks = StudyQuest.getResourceBookmarks();
 
-        languageSelect.innerHTML = Object.keys(resources).map((language) => `<option value="${language}">${language}</option>`).join('');
+        languageSelect.innerHTML = Object.keys(resources).map((language) => `<option value="${e(language)}">${e(language)}</option>`).join('');
+
+        function setStatus(message, type = 'success') {
+            resourceStatus.textContent = message;
+            resourceStatus.className = type === 'error' ? 'status-line error' : 'status-line';
+        }
+
+        function saveBookmark(title, url, type, language = 'Custom') {
+            if (!title || !url) return;
+            const alreadySaved = bookmarks.some((bookmark) => bookmark.url === url);
+            if (alreadySaved) {
+                setStatus('That resource is already saved.');
+                return;
+            }
+            bookmarks.unshift({ id: StudyQuest.newId(), title, url, type, language, savedAt: new Date().toISOString() });
+            StudyQuest.saveResourceBookmarks(bookmarks);
+            renderBookmarks();
+            setStatus('Resource saved.');
+        }
+
+        function renderResourceList(items, type, target) {
+            const query = resourceSearch.value.trim().toLowerCase();
+            const filtered = items.filter(([title, url]) => `${title} ${url}`.toLowerCase().includes(query));
+            if (!filtered.length) {
+                target.innerHTML = '<div class="empty">No resources match that search.</div>';
+                return;
+            }
+            target.innerHTML = filtered.map(([title, url]) => `
+                <div class="resource-link">
+                    <strong>${e(title)}</strong>
+                    <div class="muted break-word">${e(url)}</div>
+                    <div class="toolbar" style="margin-top: 10px;">
+                        <a class="btn btn-secondary" href="${e(url)}" target="_blank" rel="noopener noreferrer">Open</a>
+                        <button class="btn btn-ghost" type="button" data-save-resource data-title="${e(title)}" data-url="${e(url)}" data-type="${type}">Save</button>
+                    </div>
+                </div>
+            `).join('');
+            target.querySelectorAll('[data-save-resource]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    saveBookmark(button.dataset.title, button.dataset.url, button.dataset.type, languageSelect.value);
+                });
+            });
+        }
 
         function renderResources(language) {
             const selected = resources[language];
-            videoList.innerHTML = selected.video.map(([title, url]) => `<a class="resource-link" href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>`).join('');
-            textList.innerHTML = selected.text.map(([title, url]) => `<a class="resource-link" href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>`).join('');
+            renderResourceList(selected.video, 'Video', videoList);
+            renderResourceList(selected.text, 'Text', textList);
         }
 
+        function renderBookmarks() {
+            if (!bookmarks.length) {
+                bookmarksList.innerHTML = '<div class="empty">Saved resources will appear here.</div>';
+                return;
+            }
+            bookmarksList.innerHTML = bookmarks.map((bookmark) => `
+                <div class="task-card">
+                    <div class="task-topline">
+                        <div>
+                            <strong>${e(bookmark.title)}</strong>
+                            <div class="task-meta">
+                                <span class="pill">${e(bookmark.type)}</span>
+                                <span class="pill">${e(bookmark.language || 'Custom')}</span>
+                            </div>
+                            <div class="muted break-word" style="margin-top: 8px;">${e(bookmark.url)}</div>
+                        </div>
+                        <div class="toolbar">
+                            <a class="btn btn-secondary" href="${e(bookmark.url)}" target="_blank" rel="noopener noreferrer">Open</a>
+                            <button class="btn btn-danger" type="button" onclick="deleteBookmark('${bookmark.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.deleteBookmark = (bookmarkId) => {
+            bookmarks = bookmarks.filter((bookmark) => bookmark.id !== bookmarkId);
+            StudyQuest.saveResourceBookmarks(bookmarks);
+            renderBookmarks();
+        };
+
+        document.getElementById('addCustomResourceBtn').addEventListener('click', () => {
+            const title = document.getElementById('customTitle').value.trim();
+            const url = document.getElementById('customUrl').value.trim();
+            const type = document.getElementById('customType').value;
+            if (!title || !url) {
+                setStatus('Enter a title and URL.', 'error');
+                return;
+            }
+            saveBookmark(title, url, type);
+            document.getElementById('customTitle').value = '';
+            document.getElementById('customUrl').value = '';
+        });
+
+        document.getElementById('exportBookmarksBtn').addEventListener('click', () => {
+            const lines = bookmarks.map((bookmark) => `"${String(bookmark.title).replace(/"/g, '""')}","${bookmark.type}","${bookmark.language || 'Custom'}","${String(bookmark.url).replace(/"/g, '""')}"`);
+            StudyQuest.downloadText(`studyquest-resources-${StudyQuest.todayKey()}.csv`, ['Title,Type,Language,URL', ...lines].join('\n'), 'text/csv');
+        });
+
         languageSelect.addEventListener('change', () => renderResources(languageSelect.value));
+        resourceSearch.addEventListener('input', () => renderResources(languageSelect.value));
         renderResources(languageSelect.value || 'English');
+        renderBookmarks();
     </script>
 </body>
 </html>

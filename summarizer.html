@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Summarizer</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body { --page-image: url('desktop-wallpaper-peaceful-nature.jpg'); }
@@ -21,28 +23,67 @@
                 <a href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a class="active" href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>Summarizer</h2>
-                    <p>Condense long text into quick revision notes.</p>
+                    <p>Condense chapter text or OCR output, then save the result back into StudyQuest.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
                 </div>
             </div>
-            <section class="card embed-card">
+
+            <section class="two-column">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Local tool</p>
+                            <h3 style="margin-bottom: 8px;">Create revision notes</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="summaryTitle" type="text" placeholder="Summary title">
+                        <textarea class="textarea" id="summaryInput" placeholder="Paste long text here..."></textarea>
+                        <div class="inline-form">
+                            <input class="field" id="sentenceLimit" type="text" inputmode="numeric" value="5" placeholder="Sentences">
+                            <button class="btn btn-primary" id="makeSummaryBtn" type="button">Summarize</button>
+                            <button class="btn btn-secondary" id="sendSummaryToAiBtn" type="button">AI Quest</button>
+                        </div>
+                        <div class="status-line" id="summaryStatus"></div>
+                    </div>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Output</p>
+                            <h3 style="margin-bottom: 8px;">Generated summary</h3>
+                        </div>
+                        <button class="btn btn-ghost" id="saveSummaryBtn" type="button">Save to Notes</button>
+                    </div>
+                    <div class="list" id="summaryOutput">
+                        <div class="empty">Your summary will appear here.</div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="card embed-card" style="margin-top: 22px;">
                 <div class="embed-header">
                     <div>
-                        <p class="eyebrow">Embedded tool</p>
+                        <p class="eyebrow">External tool</p>
                         <h3 style="margin-bottom: 8px;">Text summarizer</h3>
-                        <p class="muted">Paste chapter text or OCR output to generate a shorter study summary.</p>
+                        <p class="muted">The local summarizer works offline. Use the external tool when you want a second pass.</p>
                     </div>
                     <a class="btn btn-primary" href="https://pkishore08-text-summarizer101.hf.space" target="_blank" rel="noopener noreferrer">Open in new tab</a>
                 </div>
@@ -54,7 +95,72 @@
     </div>
     <script src="studyquest.js"></script>
     <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const summaryInput = document.getElementById('summaryInput');
+        const summaryOutput = document.getElementById('summaryOutput');
+        const summaryStatus = document.getElementById('summaryStatus');
+        let latestSummary = '';
+
+        const draft = StudyQuest.getAiDraft();
+        if (draft?.source === 'ocr' && draft.text) {
+            document.getElementById('summaryTitle').value = draft.title || 'OCR summary';
+            summaryInput.value = draft.text;
+            StudyQuest.clearAiDraft();
+            summaryStatus.textContent = 'OCR text imported.';
+        }
+
+        function setStatus(message, type = 'success') {
+            summaryStatus.textContent = message;
+            summaryStatus.className = type === 'error' ? 'status-line error' : 'status-line';
+        }
+
+        function makeSummary() {
+            const text = summaryInput.value.trim();
+            const limit = StudyQuest.clampNumber(document.getElementById('sentenceLimit').value, 2, 10, 5);
+            if (!text) {
+                setStatus('Paste text before summarizing.', 'error');
+                return '';
+            }
+            latestSummary = StudyQuest.summarizeText(text, limit);
+            summaryOutput.innerHTML = `<div class="list-item">${StudyQuest.nl2br(latestSummary)}</div>`;
+            setStatus('Summary generated.');
+            return latestSummary;
+        }
+
+        document.getElementById('makeSummaryBtn').addEventListener('click', makeSummary);
+
+        document.getElementById('saveSummaryBtn').addEventListener('click', () => {
+            if (!latestSummary && !makeSummary()) {
+                return;
+            }
+            const notes = StudyQuest.getNotes();
+            const title = document.getElementById('summaryTitle').value.trim() || 'Generated summary';
+            notes.push({
+                id: StudyQuest.newId(),
+                name: title,
+                content: latestSummary,
+                updatedAt: new Date().toISOString()
+            });
+            StudyQuest.saveNotes(notes);
+            setStatus('Saved to Notes.');
+        });
+
+        document.getElementById('sendSummaryToAiBtn').addEventListener('click', () => {
+            const text = summaryInput.value.trim();
+            if (!text) {
+                setStatus('Add text before sending it to AI Quest.', 'error');
+                return;
+            }
+            StudyQuest.saveAiDraft({
+                title: document.getElementById('summaryTitle').value.trim() || 'Summarizer material',
+                text,
+                source: 'summarizer'
+            });
+            window.location.href = 'aiquest.html';
+        });
     </script>
 </body>
 </html>

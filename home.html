@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Dashboard</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body {
@@ -26,23 +28,24 @@
                 <a class="active" href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
             <div class="sidebar-note">
                 <strong>Today's reminder</strong>
-                <p style="margin-bottom: 0;">One strong, focused session is better than a distracted afternoon.</p>
+                <p>One strong, focused session is better than a distracted afternoon.</p>
             </div>
         </aside>
 
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2 id="welcomeTitle">Welcome back</h2>
                     <p id="welcomeSubtitle">Let's build momentum for today.</p>
                 </div>
@@ -58,31 +61,32 @@
                         <div>
                             <p class="eyebrow">Focus room</p>
                             <h3 style="margin-bottom: 8px;">Deep work timer</h3>
-                            <p class="muted">Run a study sprint and keep track of how much focused time you have completed today.</p>
+                            <p class="muted">Run a study sprint and add the completed minutes to your progress dashboard.</p>
                         </div>
                         <span class="pill" id="timerState">Ready</span>
                     </div>
                     <div class="focus-display" id="focusTimer">25:00</div>
                     <div class="inline-form" style="margin-bottom: 14px;">
-                        <input class="field" id="timerMinutes" type="number" min="5" max="180" value="25" placeholder="Minutes">
+                        <input class="field" id="timerMinutes" type="text" inputmode="numeric" placeholder="Minutes">
                         <button class="btn btn-primary" id="startTimerBtn" type="button">Start</button>
                         <button class="btn btn-secondary" id="pauseTimerBtn" type="button">Pause</button>
                         <button class="btn btn-ghost" id="resetTimerBtn" type="button">Reset</button>
                     </div>
                     <div class="metric-row">
                         <div class="metric">
-                            <strong id="completedTasksCount">0</strong>
-                            <span class="muted">Tasks completed</span>
+                            <strong id="todayFocusCount">0</strong>
+                            <span class="muted">Focus minutes today</span>
                         </div>
                         <div class="metric">
-                            <strong id="plannedTasksCount">0</strong>
-                            <span class="muted">Planned tasks</span>
+                            <strong id="completionRateCount">0%</strong>
+                            <span class="muted">Task completion</span>
                         </div>
                         <div class="metric">
-                            <strong id="subjectsCount">0</strong>
-                            <span class="muted">Subjects tracked</span>
+                            <strong id="streakCount">0</strong>
+                            <span class="muted">Focus streak</span>
                         </div>
                     </div>
+                    <div id="dailyGoalProgress" style="margin-top: 14px;"></div>
                 </article>
 
                 <article class="card side-card">
@@ -102,9 +106,31 @@
                 <article class="card half-card">
                     <div class="card-header">
                         <div>
+                            <p class="eyebrow">Today</p>
+                            <h3 style="margin-bottom: 8px;">Due soon</h3>
+                        </div>
+                        <a class="btn btn-secondary" href="tasks.html">Open tasks</a>
+                    </div>
+                    <div class="list" id="dueSoonList"></div>
+                </article>
+
+                <article class="card half-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Subjects</p>
+                            <h3 style="margin-bottom: 8px;">Progress by subject</h3>
+                        </div>
+                    </div>
+                    <div class="chart-bars" id="subjectChart"></div>
+                </article>
+
+                <article class="card half-card">
+                    <div class="card-header">
+                        <div>
                             <p class="eyebrow">Profile</p>
                             <h3 style="margin-bottom: 8px;">Learner snapshot</h3>
                         </div>
+                        <a class="btn btn-ghost" href="settings.html">Edit</a>
                     </div>
                     <div class="stack" id="profileSummary"></div>
                 </article>
@@ -125,8 +151,9 @@
                         <div>
                             <p class="eyebrow">Daily flow</p>
                             <h3 style="margin-bottom: 8px;">Study schedule</h3>
-                            <p class="muted">Save a few anchor blocks for the day so you always know what comes next.</p>
+                            <p class="muted">Save anchor blocks for the day so you always know what comes next.</p>
                         </div>
+                        <a class="btn btn-secondary" href="ttgen.html">Generate plan</a>
                     </div>
                     <div class="inline-form">
                         <input class="field" id="scheduleTime" type="time">
@@ -135,6 +162,17 @@
                         <button class="btn btn-primary" id="saveScheduleBtn" type="button">Add block</button>
                     </div>
                     <div class="list" id="scheduleList" style="margin-top: 18px;"></div>
+                </article>
+
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Activity</p>
+                            <h3 style="margin-bottom: 8px;">Recent focus sessions</h3>
+                        </div>
+                        <button class="btn btn-ghost" id="exportBackupBtn" type="button">Export backup</button>
+                    </div>
+                    <div class="activity-list" id="activityList"></div>
                 </article>
             </section>
         </main>
@@ -145,9 +183,12 @@
         StudyQuest.ensureProfile();
         StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+        StudyQuest.attachEnterSubmit('quickTaskInput', 'addQuickTaskBtn');
+        StudyQuest.attachEnterSubmit('scheduleNote', 'saveScheduleBtn');
 
+        const e = StudyQuest.escapeHTML;
         const profile = StudyQuest.getProfile();
-        const allTasks = StudyQuest.getTasks();
+        const settings = StudyQuest.getSettings();
         let quickTasks = StudyQuest.getDashboardTasks();
         let schedule = StudyQuest.getSchedule();
 
@@ -158,23 +199,104 @@
         const tipsList = document.getElementById('tipsList');
         const quickTasksList = document.getElementById('quickTasksList');
         const scheduleList = document.getElementById('scheduleList');
+        const dueSoonList = document.getElementById('dueSoonList');
+        const subjectChart = document.getElementById('subjectChart');
+        const activityList = document.getElementById('activityList');
+        const dailyGoalProgress = document.getElementById('dailyGoalProgress');
 
         welcomeTitle.textContent = `Welcome back, ${profile.name}`;
-        welcomeSubtitle.textContent = `${profile.className} • Goal: ${profile.goal}`;
-
-        document.getElementById('completedTasksCount').textContent = allTasks.filter((task) => task.done).length;
-        document.getElementById('plannedTasksCount').textContent = allTasks.length;
-        document.getElementById('subjectsCount').textContent = profile.subjects.length;
+        welcomeSubtitle.textContent = `${profile.className} | Goal: ${profile.goal}`;
 
         profileSummary.innerHTML = `
-            <div class="list-item"><strong>Name</strong><div class="muted">${profile.name}</div></div>
-            <div class="list-item"><strong>Class</strong><div class="muted">${profile.className}</div></div>
-            <div class="list-item"><strong>Subjects</strong><div class="muted">${profile.subjects.join(', ')}</div></div>
-            <div class="list-item"><strong>Focus area</strong><div class="muted">${profile.studyStyle || 'General study planning and consistency'}</div></div>
+            <div class="list-item"><strong>Name</strong><div class="muted">${e(profile.name)}</div></div>
+            <div class="list-item"><strong>Class</strong><div class="muted">${e(profile.className)}</div></div>
+            <div class="list-item"><strong>Subjects</strong><div class="muted">${e(profile.subjects.join(', '))}</div></div>
+            <div class="list-item"><strong>Focus area</strong><div class="muted">${e(profile.studyStyle || 'General study planning and consistency')}</div></div>
         `;
 
         quoteBox.textContent = StudyQuest.getQuoteOfDay();
-        tipsList.innerHTML = StudyQuest.getTips().map((tip) => `<li>${tip}</li>`).join('');
+        tipsList.innerHTML = StudyQuest.getTips().map((tip) => `<li>${e(tip)}</li>`).join('');
+        document.getElementById('timerMinutes').value = settings.focusMinutes;
+
+        function renderAnalytics() {
+            const analytics = StudyQuest.getAnalytics();
+            const dailyGoal = Math.max(1, Number(settings.dailyFocusGoal || 90));
+            const dailyPercent = Math.min(100, Math.round((analytics.todayFocusMinutes / dailyGoal) * 100));
+
+            document.getElementById('todayFocusCount').textContent = analytics.todayFocusMinutes;
+            document.getElementById('completionRateCount').textContent = `${analytics.completionRate}%`;
+            document.getElementById('streakCount').textContent = analytics.streakDays;
+            dailyGoalProgress.innerHTML = `
+                <div class="split-actions">
+                    <span class="muted">Daily focus goal: ${analytics.todayFocusMinutes}/${dailyGoal} minutes</span>
+                    <span class="pill ${dailyPercent >= 100 ? 'success' : ''}">${dailyPercent}%</span>
+                </div>
+                ${StudyQuest.renderProgressBar(dailyPercent)}
+            `;
+
+            renderDueSoon(analytics);
+            renderSubjectChart();
+            renderActivity(analytics.focusLog);
+        }
+
+        function renderDueSoon(analytics) {
+            const visible = [...analytics.overdueTasks, ...analytics.dueSoonTasks]
+                .sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''))
+                .slice(0, 6);
+
+            if (!visible.length) {
+                dueSoonList.innerHTML = '<div class="empty">No urgent deadlines. Nice breathing room.</div>';
+                return;
+            }
+
+            dueSoonList.innerHTML = visible.map((task) => {
+                const diff = StudyQuest.daysUntil(task.deadline);
+                const status = diff < 0 ? `${Math.abs(diff)} day overdue` : diff === 0 ? 'Due today' : `Due in ${diff} day${diff === 1 ? '' : 's'}`;
+                const statusClass = diff < 0 ? 'danger' : diff === 0 ? 'warning' : '';
+                return `
+                    <div class="task-card">
+                        <div class="task-title"><strong>${e(task.title)}</strong></div>
+                        <div class="task-meta">
+                            <span class="pill ${statusClass}">${e(status)}</span>
+                            <span class="pill">${e(task.subject || 'General')}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderSubjectChart() {
+            const rows = StudyQuest.getSubjectStats();
+            if (!rows.length) {
+                subjectChart.innerHTML = '<div class="empty">Add subjects and tasks to see progress here.</div>';
+                return;
+            }
+
+            subjectChart.innerHTML = rows.map((row) => `
+                <div class="chart-row">
+                    <strong>${e(row.subject)}</strong>
+                    <div class="bar-shell"><span style="width:${row.rate}%"></span></div>
+                    <span class="muted">${row.rate}%</span>
+                </div>
+            `).join('');
+        }
+
+        function renderActivity(focusLog) {
+            if (!focusLog.length) {
+                activityList.innerHTML = '<div class="empty">Completed focus sessions will appear here.</div>';
+                return;
+            }
+
+            activityList.innerHTML = focusLog.slice(0, 6).map((row) => `
+                <div class="activity-row">
+                    <div>
+                        <strong>${e(row.label || 'Focus session')}</strong>
+                        <div class="muted">${e(new Date(row.completedAt).toLocaleString())}</div>
+                    </div>
+                    <span class="pill success">${Number(row.minutes || 0)} min</span>
+                </div>
+            `).join('');
+        }
 
         function renderQuickTasks() {
             if (!quickTasks.length) {
@@ -186,8 +308,8 @@
                 <div class="task-card ${task.done ? 'done' : ''}">
                     <div class="task-topline">
                         <div>
-                            <div class="task-title"><strong>${task.title}</strong></div>
-                            <div class="muted">Added ${new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                            <div class="task-title"><strong>${e(task.title)}</strong></div>
+                            <div class="muted">Added ${e(new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</div>
                         </div>
                         <div class="toolbar">
                             <button class="btn btn-secondary" type="button" onclick="toggleQuickTask('${task.id}')">${task.done ? 'Undo' : 'Done'}</button>
@@ -211,9 +333,9 @@
                     <div class="schedule-row">
                         <div class="subject-row">
                             <div>
-                                <strong>${row.time}</strong>
-                                <div>${row.task}</div>
-                                <div class="muted">${row.note}</div>
+                                <strong>${e(row.time)}</strong>
+                                <div>${e(row.task)}</div>
+                                <div class="muted">${e(row.note || '')}</div>
                             </div>
                             <button class="btn btn-danger" type="button" onclick="removeSchedule('${row.id}')">Delete</button>
                         </div>
@@ -268,7 +390,8 @@
             renderSchedule();
         };
 
-        let timerSeconds = 25 * 60;
+        let timerSeconds = Number(settings.focusMinutes || 25) * 60;
+        let plannedMinutes = Number(settings.focusMinutes || 25);
         let timerInterval = null;
         const focusTimer = document.getElementById('focusTimer');
         const timerState = document.getElementById('timerState');
@@ -280,14 +403,20 @@
             focusTimer.textContent = `${minutes}:${seconds}`;
         }
 
+        function resetTimerFromInput() {
+            plannedMinutes = StudyQuest.clampNumber(timerMinutesInput.value, 5, 180, Number(settings.focusMinutes || 25));
+            timerMinutesInput.value = plannedMinutes;
+            timerSeconds = plannedMinutes * 60;
+            paintTimer();
+        }
+
         document.getElementById('startTimerBtn').addEventListener('click', () => {
             if (timerInterval) {
                 return;
             }
 
             if (timerSeconds <= 0) {
-                timerSeconds = Number(timerMinutesInput.value || 25) * 60;
-                paintTimer();
+                resetTimerFromInput();
             }
 
             timerState.textContent = 'Running';
@@ -298,9 +427,10 @@
                 if (timerSeconds <= 0) {
                     clearInterval(timerInterval);
                     timerInterval = null;
+                    StudyQuest.logFocusSession({ minutes: plannedMinutes, label: 'Dashboard focus sprint', source: 'dashboard' });
                     timerState.textContent = 'Completed';
                     timerState.className = 'pill success';
-                    alert('Focus session complete. Take a short break.');
+                    renderAnalytics();
                 }
             }, 1000);
         });
@@ -309,26 +439,29 @@
             clearInterval(timerInterval);
             timerInterval = null;
             timerState.textContent = 'Paused';
-            timerState.className = 'pill';
+            timerState.className = 'pill warning';
         });
 
         document.getElementById('resetTimerBtn').addEventListener('click', () => {
             clearInterval(timerInterval);
             timerInterval = null;
-            timerSeconds = Number(timerMinutesInput.value || 25) * 60;
+            resetTimerFromInput();
             timerState.textContent = 'Ready';
             timerState.className = 'pill';
-            paintTimer();
         });
 
         timerMinutesInput.addEventListener('change', () => {
-            timerSeconds = Number(timerMinutesInput.value || 25) * 60;
-            paintTimer();
+            if (!timerInterval) {
+                resetTimerFromInput();
+            }
         });
 
-        paintTimer();
+        document.getElementById('exportBackupBtn').addEventListener('click', StudyQuest.exportData);
+
+        resetTimerFromInput();
         renderQuickTasks();
         renderSchedule();
+        renderAnalytics();
     </script>
 </body>
 </html>

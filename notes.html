@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Notes</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body {
@@ -26,21 +28,22 @@
                 <a href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a class="active" href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
 
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>Subject notes</h2>
-                    <p>Organize notes by subject and keep a single writing space per topic.</p>
+                    <p>Autosave notes by subject, search your notebooks, and send source material into AI Quest.</p>
                 </div>
                 <div class="topbar-info">
                     <div class="clock-chip" id="clock">00:00:00</div>
@@ -55,10 +58,14 @@
                             <p class="eyebrow">Subjects</p>
                             <h3 style="margin-bottom: 8px;">Your notebook list</h3>
                         </div>
+                        <span class="pill" id="noteTotalPill">0 notes</span>
                     </div>
-                    <div class="inline-form">
-                        <input class="field" id="newSubjectName" type="text" placeholder="Add a subject or topic">
-                        <button class="btn btn-primary" id="addSubjectBtn" type="button">Add</button>
+                    <div class="stack">
+                        <input class="field" id="noteSearch" type="search" placeholder="Search subject or note text">
+                        <div class="inline-form">
+                            <input class="field" id="newSubjectName" type="text" placeholder="Add a subject or topic">
+                            <button class="btn btn-primary" id="addSubjectBtn" type="button">Add</button>
+                        </div>
                     </div>
                     <div class="subject-list" id="subjectList" style="margin-top: 18px;"></div>
                 </article>
@@ -68,15 +75,28 @@
                         <div>
                             <p class="eyebrow">Editor</p>
                             <h3 style="margin-bottom: 8px;" id="editorTitle">Select a subject</h3>
-                            <p class="muted">Everything saves to your browser automatically.</p>
+                            <p class="muted" id="editorMeta">Everything saves to your browser automatically.</p>
                         </div>
                     </div>
-                    <textarea class="textarea" id="notesEditor" placeholder="Choose a subject on the left, then start writing..." disabled></textarea>
-                    <div class="toolbar" style="margin-top: 14px;">
-                        <button class="btn btn-primary" id="saveNoteBtn" type="button">Save note</button>
-                        <button class="btn btn-danger" id="deleteSubjectBtn" type="button">Delete subject</button>
+                    <div class="stack">
+                        <input class="field" id="currentSubjectName" type="text" placeholder="Subject name" disabled>
+                        <div class="toolbar">
+                            <button class="btn btn-ghost" type="button" data-format="bold">Bold</button>
+                            <button class="btn btn-ghost" type="button" data-format="italic">Italic</button>
+                            <button class="btn btn-ghost" type="button" data-format="heading">Heading</button>
+                            <button class="btn btn-ghost" type="button" data-format="list">List</button>
+                        </div>
+                        <textarea class="textarea" id="notesEditor" placeholder="Choose a subject on the left, then start writing..." disabled></textarea>
+                        <div class="split-actions">
+                            <div class="toolbar">
+                                <button class="btn btn-primary" id="saveNoteBtn" type="button">Save note</button>
+                                <button class="btn btn-secondary" id="sendToAiBtn" type="button">AI Quest</button>
+                                <button class="btn btn-ghost" id="exportNoteBtn" type="button">Export</button>
+                            </div>
+                            <button class="btn btn-danger" id="deleteSubjectBtn" type="button">Delete subject</button>
+                        </div>
+                        <div class="status-line" id="notesStatus"></div>
                     </div>
-                    <div class="status-line" id="notesStatus"></div>
                 </article>
             </section>
         </main>
@@ -87,14 +107,21 @@
         StudyQuest.ensureProfile();
         StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+        StudyQuest.attachEnterSubmit('newSubjectName', 'addSubjectBtn');
 
+        const e = StudyQuest.escapeHTML;
         let notes = StudyQuest.getNotes();
         let activeSubjectId = notes[0]?.id || null;
+        let autosaveTimer = null;
 
         const subjectList = document.getElementById('subjectList');
         const editorTitle = document.getElementById('editorTitle');
+        const editorMeta = document.getElementById('editorMeta');
         const notesEditor = document.getElementById('notesEditor');
+        const currentSubjectName = document.getElementById('currentSubjectName');
         const notesStatus = document.getElementById('notesStatus');
+        const noteSearch = document.getElementById('noteSearch');
+        const noteTotalPill = document.getElementById('noteTotalPill');
 
         function saveNotes() {
             StudyQuest.saveNotes(notes);
@@ -104,12 +131,50 @@
             return notes.find((item) => item.id === activeSubjectId) || null;
         }
 
+        function setStatus(message, type = 'success') {
+            notesStatus.textContent = message;
+            notesStatus.className = type === 'error' ? 'status-line error' : 'status-line';
+        }
+
+        function filteredNotes() {
+            const query = noteSearch.value.trim().toLowerCase();
+            if (!query) {
+                return notes;
+            }
+            return notes.filter((note) => `${note.name} ${note.content}`.toLowerCase().includes(query));
+        }
+
+        function saveCurrentNote(message = '') {
+            const activeSubject = getActiveSubject();
+            if (!activeSubject) {
+                return;
+            }
+            const nextName = currentSubjectName.value.trim() || activeSubject.name;
+            notes = notes.map((note) => note.id === activeSubject.id ? {
+                ...note,
+                name: nextName,
+                content: notesEditor.value,
+                updatedAt: new Date().toISOString()
+            } : note);
+            saveNotes();
+            if (message) {
+                setStatus(message);
+            }
+            renderSubjects();
+            renderEditor();
+        }
+
         function renderSubjects() {
+            noteTotalPill.textContent = StudyQuest.pluralize(notes.length, 'note');
+            const visible = filteredNotes();
             if (!notes.length) {
                 subjectList.innerHTML = '<div class="empty">No subjects yet. Add your first notebook.</div>';
                 editorTitle.textContent = 'Select a subject';
+                editorMeta.textContent = 'Everything saves to your browser automatically.';
                 notesEditor.value = '';
                 notesEditor.disabled = true;
+                currentSubjectName.value = '';
+                currentSubjectName.disabled = true;
                 return;
             }
 
@@ -117,23 +182,42 @@
                 activeSubjectId = notes[0].id;
             }
 
-            subjectList.innerHTML = notes.map((note) => `
-                <button class="subject-button ${note.id === activeSubjectId ? 'active' : ''}" type="button" onclick="selectSubject('${note.id}')">
-                    <strong>${note.name}</strong>
-                    <span class="muted">${note.content ? `${note.content.length} characters saved` : 'No notes yet'}</span>
-                </button>
-            `).join('');
+            if (!visible.length) {
+                subjectList.innerHTML = '<div class="empty">No notes match that search.</div>';
+                return;
+            }
 
+            subjectList.innerHTML = visible.map((note) => {
+                const words = StudyQuest.countWords(note.content);
+                return `
+                    <button class="subject-button ${note.id === activeSubjectId ? 'active' : ''}" type="button" onclick="selectSubject('${note.id}')">
+                        <strong>${e(note.name)}</strong>
+                        <span class="muted">${StudyQuest.pluralize(words, 'word')} | ${note.updatedAt ? e(new Date(note.updatedAt).toLocaleDateString()) : 'Not edited yet'}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderEditor() {
             const activeSubject = getActiveSubject();
+            if (!activeSubject) {
+                return;
+            }
+            const words = StudyQuest.countWords(activeSubject.content);
             editorTitle.textContent = activeSubject.name;
+            editorMeta.textContent = `${StudyQuest.pluralize(words, 'word')} saved in this note`;
+            currentSubjectName.disabled = false;
+            currentSubjectName.value = activeSubject.name;
             notesEditor.disabled = false;
-            notesEditor.value = activeSubject.content;
+            notesEditor.value = activeSubject.content || '';
         }
 
         window.selectSubject = (subjectId) => {
+            saveCurrentNote();
             activeSubjectId = subjectId;
             renderSubjects();
-            notesStatus.textContent = '';
+            renderEditor();
+            setStatus('');
         };
 
         document.getElementById('addSubjectBtn').addEventListener('click', () => {
@@ -143,25 +227,19 @@
                 return;
             }
 
-            const note = { id: StudyQuest.newId(), name, content: '' };
+            const note = { id: StudyQuest.newId(), name, content: '', updatedAt: new Date().toISOString() };
             notes.push(note);
             activeSubjectId = note.id;
             saveNotes();
             input.value = '';
+            noteSearch.value = '';
             renderSubjects();
-            notesStatus.textContent = 'Subject added.';
+            renderEditor();
+            setStatus('Subject added.');
         });
 
         document.getElementById('saveNoteBtn').addEventListener('click', () => {
-            const activeSubject = getActiveSubject();
-            if (!activeSubject) {
-                return;
-            }
-
-            notes = notes.map((note) => note.id === activeSubject.id ? { ...note, content: notesEditor.value } : note);
-            saveNotes();
-            renderSubjects();
-            notesStatus.textContent = 'Note saved.';
+            saveCurrentNote('Note saved.');
         });
 
         document.getElementById('deleteSubjectBtn').addEventListener('click', () => {
@@ -174,14 +252,70 @@
             activeSubjectId = notes[0]?.id || null;
             saveNotes();
             renderSubjects();
-            notesStatus.textContent = 'Subject deleted.';
+            renderEditor();
+            setStatus('Subject deleted.');
         });
 
         notesEditor.addEventListener('input', () => {
-            notesStatus.textContent = 'Unsaved changes';
+            setStatus('Autosaving...');
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(() => saveCurrentNote('Autosaved.'), 650);
+        });
+
+        currentSubjectName.addEventListener('input', () => {
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(() => saveCurrentNote('Subject renamed.'), 650);
+        });
+
+        noteSearch.addEventListener('input', renderSubjects);
+
+        document.querySelectorAll('[data-format]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (notesEditor.disabled) return;
+                const format = button.dataset.format;
+                const start = notesEditor.selectionStart;
+                const end = notesEditor.selectionEnd;
+                const selected = notesEditor.value.slice(start, end) || 'text';
+                const before = notesEditor.value.slice(0, start);
+                const after = notesEditor.value.slice(end);
+                let insert = selected;
+
+                if (format === 'bold') insert = `**${selected}**`;
+                if (format === 'italic') insert = `_${selected}_`;
+                if (format === 'heading') insert = `\n## ${selected}\n`;
+                if (format === 'list') insert = selected.split('\n').map((line) => `- ${line}`).join('\n');
+
+                notesEditor.value = before + insert + after;
+                notesEditor.focus();
+                notesEditor.dispatchEvent(new Event('input'));
+            });
+        });
+
+        document.getElementById('exportNoteBtn').addEventListener('click', () => {
+            saveCurrentNote();
+            const activeSubject = getActiveSubject();
+            if (!activeSubject) return;
+            const safeName = activeSubject.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'note';
+            StudyQuest.downloadText(`${safeName}.txt`, `${activeSubject.name}\n\n${activeSubject.content}`);
+        });
+
+        document.getElementById('sendToAiBtn').addEventListener('click', () => {
+            saveCurrentNote();
+            const activeSubject = getActiveSubject();
+            if (!activeSubject || !activeSubject.content.trim()) {
+                setStatus('Add note content before sending it to AI Quest.', 'error');
+                return;
+            }
+            StudyQuest.saveAiDraft({
+                title: activeSubject.name,
+                text: activeSubject.content,
+                source: 'notes'
+            });
+            window.location.href = 'aiquest.html';
         });
 
         renderSubjects();
+        renderEditor();
     </script>
 </body>
 </html>

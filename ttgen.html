@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Timetable Generator</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body { --page-image: url('HD-wallpaper-the-path-of-tomorrow-alone-artist-artwork-digital-art.jpg'); }
@@ -15,26 +17,31 @@
         <aside class="sidebar" id="sidebar">
             <div class="brand">
                 <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
-                <div class="brand-copy"><h1>StudyQuest</h1><p>Timetable generator</p></div>
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Timetable</p></div>
             </div>
             <nav class="nav-links">
                 <a href="home.html">Home</a>
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a class="active" href="ttgen.html">Timetable Gen</a>
+                <a class="active" href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>Timetable generator</h2>
-                    <p>Split your available study time across multiple tasks automatically.</p>
+                    <p>Split available study time across tasks, add breaks, save plans, and push blocks to your dashboard.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
                 </div>
             </div>
             <section class="two-column">
@@ -46,27 +53,29 @@
                         </div>
                     </div>
                     <div class="stack">
+                        <input class="field" id="planName" type="text" placeholder="Plan name, for example Biology revision evening">
                         <div class="inline-form">
                             <input class="field" id="startTime" type="time">
                             <input class="field" id="endTime" type="time">
+                            <input class="field" id="breakMinutes" type="text" inputmode="numeric" placeholder="Break mins">
                         </div>
-                        <input class="field" id="taskNames" type="text" placeholder="Tasks separated by commas">
-                        <button class="btn btn-primary" id="generateTimetableBtn" type="button">Generate timetable</button>
+                        <textarea class="textarea short" id="taskNames" placeholder="Tasks separated by commas"></textarea>
+                        <div class="button-row">
+                            <button class="btn btn-secondary" id="useOpenTasksBtn" type="button">Use open tasks</button>
+                            <button class="btn btn-primary" id="generateTimetableBtn" type="button">Generate</button>
+                            <button class="btn btn-ghost" id="savePlanBtn" type="button">Save plan</button>
+                        </div>
                         <div class="status-line" id="timetableStatus"></div>
                     </div>
                 </article>
                 <article class="card">
                     <div class="card-header">
                         <div>
-                            <p class="eyebrow">Advice</p>
-                            <h3 style="margin-bottom: 8px;">Use realistic blocks</h3>
+                            <p class="eyebrow">Saved plans</p>
+                            <h3 style="margin-bottom: 8px;">Reuse or sync</h3>
                         </div>
                     </div>
-                    <ul class="tips-list">
-                        <li>Keep sessions between 60 and 180 minutes for best results.</li>
-                        <li>Separate tasks with commas, for example: Maths revision, Chemistry notes, English reading.</li>
-                        <li>Add breaks manually if you want longer study plans.</li>
-                    </ul>
+                    <div class="list" id="savedPlansList"></div>
                 </article>
             </section>
             <section class="card" style="margin-top: 22px;">
@@ -75,14 +84,18 @@
                         <p class="eyebrow">Output</p>
                         <h3 style="margin-bottom: 8px;">Generated timetable</h3>
                     </div>
+                    <div class="toolbar">
+                        <button class="btn btn-secondary" id="syncScheduleBtn" type="button">Add to dashboard</button>
+                        <button class="btn btn-ghost" id="exportPlanBtn" type="button">Export CSV</button>
+                    </div>
                 </div>
                 <div class="table-shell">
                     <table class="data-table">
                         <thead>
-                            <tr><th>Time slot</th><th>Task</th></tr>
+                            <tr><th>Time slot</th><th>Type</th><th>Task</th></tr>
                         </thead>
                         <tbody id="timetableBody">
-                            <tr><td colspan="2" class="muted">Generate a timetable to see your schedule here.</td></tr>
+                            <tr><td colspan="3" class="muted">Generate a timetable to see your schedule here.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -91,46 +104,173 @@
     </div>
     <script src="studyquest.js"></script>
     <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
 
-        function formatTime(date) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const e = StudyQuest.escapeHTML;
+        let currentRows = [];
+        let savedPlans = StudyQuest.getTimetablePlans();
+        const status = document.getElementById('timetableStatus');
+        const tbody = document.getElementById('timetableBody');
+        const savedPlansList = document.getElementById('savedPlansList');
+        document.getElementById('breakMinutes').value = StudyQuest.getSettings().breakMinutes;
+
+        function setStatus(message, type = 'success') {
+            status.textContent = message;
+            status.className = type === 'error' ? 'status-line error' : 'status-line';
         }
 
-        document.getElementById('generateTimetableBtn').addEventListener('click', () => {
+        function renderTimetable(rows = currentRows) {
+            currentRows = rows;
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="3" class="muted">Generate a timetable to see your schedule here.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows.map((row) => `
+                <tr>
+                    <td>${e(row.start)} - ${e(row.end)}</td>
+                    <td><span class="pill ${row.type === 'break' ? 'warning' : 'success'}">${e(row.type)}</span></td>
+                    <td>${e(row.task)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSavedPlans() {
+            if (!savedPlans.length) {
+                savedPlansList.innerHTML = '<div class="empty">Saved timetables will appear here.</div>';
+                return;
+            }
+
+            savedPlansList.innerHTML = savedPlans.map((plan) => `
+                <div class="task-card">
+                    <div class="task-topline">
+                        <div>
+                            <strong>${e(plan.name)}</strong>
+                            <div class="muted">${e(new Date(plan.createdAt).toLocaleString())} | ${StudyQuest.pluralize(plan.rows.length, 'block')}</div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" type="button" onclick="loadPlan('${plan.id}')">Load</button>
+                            <button class="btn btn-ghost" type="button" onclick="syncPlan('${plan.id}')">Sync</button>
+                            <button class="btn btn-danger" type="button" onclick="deletePlan('${plan.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function generateRows() {
             const startValue = document.getElementById('startTime').value;
             const endValue = document.getElementById('endTime').value;
             const taskNames = document.getElementById('taskNames').value.split(',').map((task) => task.trim()).filter(Boolean);
-            const status = document.getElementById('timetableStatus');
-            const tbody = document.getElementById('timetableBody');
+            const breakMinutes = StudyQuest.clampNumber(document.getElementById('breakMinutes').value, 0, 30, 5);
 
             if (!startValue || !endValue || !taskNames.length) {
-                status.textContent = 'Enter a start time, end time, and at least one task.';
-                return;
+                setStatus('Enter a start time, end time, and at least one task.', 'error');
+                return [];
             }
 
             const start = new Date(`1970-01-01T${startValue}:00`);
             const end = new Date(`1970-01-01T${endValue}:00`);
             if (end <= start) {
-                status.textContent = 'End time must be later than start time.';
+                setStatus('End time must be later than start time.', 'error');
+                return [];
+            }
+
+            const rows = StudyQuest.createStudyPlanFromTasks(taskNames, startValue, endValue, breakMinutes);
+            renderTimetable(rows);
+            setStatus(`Created ${StudyQuest.pluralize(rows.length, 'timetable block')}.`);
+            return rows;
+        }
+
+        function syncRowsToDashboard(rows) {
+            if (!rows.length) {
+                setStatus('Generate or load a plan before syncing.', 'error');
                 return;
             }
 
-            const totalMinutes = Math.floor((end - start) / 60000);
-            const blockMinutes = Math.max(1, Math.floor(totalMinutes / taskNames.length));
-            let current = new Date(start);
+            const schedule = StudyQuest.getSchedule();
+            rows
+                .filter((row) => row.type === 'study')
+                .forEach((row) => {
+                    schedule.push({
+                        id: StudyQuest.newId(),
+                        time: row.start,
+                        task: row.task,
+                        note: `Until ${row.end}`
+                    });
+                });
+            StudyQuest.saveSchedule(schedule);
+            setStatus('Study blocks added to the dashboard schedule.');
+        }
 
-            tbody.innerHTML = '';
-            taskNames.forEach((task, index) => {
-                const next = index === taskNames.length - 1 ? new Date(end) : new Date(current.getTime() + blockMinutes * 60000);
-                const row = document.createElement('tr');
-                row.innerHTML = `<td>${formatTime(current)} - ${formatTime(next)}</td><td>${task}</td>`;
-                tbody.appendChild(row);
-                current = next;
-            });
-
-            status.textContent = `Created ${taskNames.length} timetable blocks.`;
+        document.getElementById('useOpenTasksBtn').addEventListener('click', () => {
+            const tasks = StudyQuest.getTasks()
+                .filter((task) => !task.done)
+                .sort((a, b) => String(a.deadline || '9999-12-31').localeCompare(String(b.deadline || '9999-12-31')))
+                .slice(0, 8);
+            if (!tasks.length) {
+                setStatus('No open tasks found. Add tasks first or type your own list.', 'error');
+                return;
+            }
+            document.getElementById('taskNames').value = tasks.map((task) => task.title).join(', ');
+            setStatus('Open tasks loaded into the planner.');
         });
+
+        document.getElementById('generateTimetableBtn').addEventListener('click', generateRows);
+
+        document.getElementById('savePlanBtn').addEventListener('click', () => {
+            if (!currentRows.length) {
+                generateRows();
+            }
+            if (!currentRows.length) {
+                return;
+            }
+            const name = document.getElementById('planName').value.trim() || `Study plan ${StudyQuest.formatShortDate()}`;
+            savedPlans.unshift({
+                id: StudyQuest.newId(),
+                name,
+                createdAt: new Date().toISOString(),
+                rows: currentRows
+            });
+            StudyQuest.saveTimetablePlans(savedPlans);
+            renderSavedPlans();
+            setStatus('Plan saved.');
+        });
+
+        document.getElementById('syncScheduleBtn').addEventListener('click', () => syncRowsToDashboard(currentRows));
+
+        document.getElementById('exportPlanBtn').addEventListener('click', () => {
+            if (!currentRows.length) {
+                setStatus('Generate or load a plan before exporting.', 'error');
+                return;
+            }
+            const lines = currentRows.map((row) => `"${row.start} - ${row.end}","${row.type}","${String(row.task).replace(/"/g, '""')}"`);
+            StudyQuest.downloadText(`studyquest-timetable-${StudyQuest.todayKey()}.csv`, ['Time slot,Type,Task', ...lines].join('\n'), 'text/csv');
+        });
+
+        window.loadPlan = (planId) => {
+            const plan = savedPlans.find((item) => item.id === planId);
+            if (!plan) return;
+            document.getElementById('planName').value = plan.name;
+            renderTimetable(plan.rows);
+            setStatus('Plan loaded.');
+        };
+
+        window.syncPlan = (planId) => {
+            const plan = savedPlans.find((item) => item.id === planId);
+            if (!plan) return;
+            syncRowsToDashboard(plan.rows);
+        };
+
+        window.deletePlan = (planId) => {
+            savedPlans = savedPlans.filter((item) => item.id !== planId);
+            StudyQuest.saveTimetablePlans(savedPlans);
+            renderSavedPlans();
+        };
+
+        renderSavedPlans();
     </script>
 </body>
 </html>

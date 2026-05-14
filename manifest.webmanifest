@@ -1,0 +1,23 @@
+{
+  "name": "StudyQuest",
+  "short_name": "StudyQuest",
+  "description": "A browser-based study planner with tasks, notes, timetables, focus tracking, and smart study tools.",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#17202b",
+  "theme_color": "#17202b",
+  "icons": [
+    {
+      "src": "studyquest-high-resolution-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "studyquest-high-resolution-logo-black-transparent.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

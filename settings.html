@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Settings</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('wallpapersden.com_ai-landscape-2023-digital-art_1952x1120.jpg'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Settings</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a class="active" href="settings.html">Settings</a>
+            </nav>
+        </aside>
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Settings</h2>
+                    <p>Update your learner profile, tune defaults, and keep a backup of your StudyQuest data.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="settings-grid">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Profile</p>
+                            <h3 style="margin-bottom: 8px;">Learner details</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="inline-form">
+                            <input class="field" id="name" type="text" placeholder="Your name">
+                            <select class="select" id="className">
+                                <option>Class 6</option>
+                                <option>Class 7</option>
+                                <option>Class 8</option>
+                                <option>Class 9</option>
+                                <option>Class 10</option>
+                                <option>Class 11</option>
+                                <option>Class 12</option>
+                                <option>College</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <input class="field" id="email" type="text" inputmode="email" placeholder="Email address">
+                        <input class="field" id="goal" type="text" placeholder="Main academic goal">
+                        <input class="field" id="subjects" type="text" placeholder="Interested subjects, separated by commas">
+                        <textarea class="textarea short" id="studyStyle" placeholder="What do you want help with most?"></textarea>
+                        <button class="btn btn-primary" id="saveProfileBtn" type="button">Save profile</button>
+                        <div class="status-line" id="profileStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Preferences</p>
+                            <h3 style="margin-bottom: 8px;">Study defaults</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="theme-choice" id="themeChoice"></div>
+                        <div class="inline-form">
+                            <input class="field" id="focusMinutes" type="text" inputmode="numeric" placeholder="Focus minutes">
+                            <input class="field" id="breakMinutes" type="text" inputmode="numeric" placeholder="Break minutes">
+                            <input class="field" id="dailyFocusGoal" type="text" inputmode="numeric" placeholder="Daily focus goal">
+                        </div>
+                        <button class="btn btn-primary" id="saveSettingsBtn" type="button">Save preferences</button>
+                        <div class="status-line" id="settingsStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Backup</p>
+                            <h3 style="margin-bottom: 8px;">Export or restore</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <button class="btn btn-primary" id="exportDataBtn" type="button">Export StudyQuest backup</button>
+                        <input class="field" id="importFile" type="file" accept="application/json,.json">
+                        <button class="btn btn-secondary" id="importDataBtn" type="button">Import backup</button>
+                        <div class="status-line" id="backupStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Reset</p>
+                            <h3 style="margin-bottom: 8px;">Data cleanup</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <button class="btn btn-danger" id="resetStudyDataBtn" type="button">Reset study data</button>
+                        <button class="btn btn-danger" id="resetAllDataBtn" type="button">Reset everything</button>
+                        <div class="status-line" id="resetStatus"></div>
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const profile = StudyQuest.getProfile();
+        let settings = StudyQuest.getSettings();
+        const themeChoice = document.getElementById('themeChoice');
+
+        document.getElementById('name').value = profile.name || '';
+        document.getElementById('className').value = profile.className || 'Other';
+        document.getElementById('email').value = profile.email || '';
+        document.getElementById('goal').value = profile.goal || '';
+        document.getElementById('subjects').value = (profile.subjects || []).join(', ');
+        document.getElementById('studyStyle').value = profile.studyStyle || '';
+        document.getElementById('focusMinutes').value = settings.focusMinutes;
+        document.getElementById('breakMinutes').value = settings.breakMinutes;
+        document.getElementById('dailyFocusGoal').value = settings.dailyFocusGoal;
+
+        function renderThemeChoice() {
+            themeChoice.innerHTML = Object.entries(StudyQuest.themeLabels).map(([key, label]) => `
+                <button type="button" class="${settings.theme === key ? 'active' : ''}" data-theme-key="${key}">
+                    <strong>${label}</strong>
+                </button>
+            `).join('');
+            themeChoice.querySelectorAll('[data-theme-key]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    settings = { ...settings, theme: button.dataset.themeKey };
+                    StudyQuest.saveSettings(settings);
+                    renderThemeChoice();
+                });
+            });
+        }
+
+        document.getElementById('saveProfileBtn').addEventListener('click', () => {
+            const nextProfile = {
+                ...profile,
+                name: document.getElementById('name').value.trim(),
+                className: document.getElementById('className').value,
+                email: document.getElementById('email').value.trim(),
+                goal: document.getElementById('goal').value.trim(),
+                subjects: document.getElementById('subjects').value.split(',').map((item) => item.trim()).filter(Boolean),
+                studyStyle: document.getElementById('studyStyle').value.trim(),
+                updatedAt: new Date().toISOString()
+            };
+
+            if (!nextProfile.name || !nextProfile.goal || !nextProfile.subjects.length) {
+                document.getElementById('profileStatus').textContent = 'Name, goal, and at least one subject are required.';
+                document.getElementById('profileStatus').className = 'status-line error';
+                return;
+            }
+
+            StudyQuest.saveProfile(nextProfile);
+            document.getElementById('profileStatus').textContent = 'Profile saved.';
+            document.getElementById('profileStatus').className = 'status-line';
+        });
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+            settings = {
+                ...settings,
+                focusMinutes: StudyQuest.clampNumber(document.getElementById('focusMinutes').value, 5, 180, 25),
+                breakMinutes: StudyQuest.clampNumber(document.getElementById('breakMinutes').value, 0, 30, 5),
+                dailyFocusGoal: StudyQuest.clampNumber(document.getElementById('dailyFocusGoal').value, 10, 480, 90)
+            };
+            StudyQuest.saveSettings(settings);
+            document.getElementById('settingsStatus').textContent = 'Preferences saved.';
+        });
+
+        document.getElementById('exportDataBtn').addEventListener('click', StudyQuest.exportData);
+
+        document.getElementById('importDataBtn').addEventListener('click', async () => {
+            const [file] = document.getElementById('importFile').files || [];
+            if (!file) {
+                document.getElementById('backupStatus').textContent = 'Choose a backup file first.';
+                document.getElementById('backupStatus').className = 'status-line error';
+                return;
+            }
+            try {
+                await StudyQuest.importData(file);
+                document.getElementById('backupStatus').textContent = 'Backup imported. Reloading...';
+                window.setTimeout(() => window.location.reload(), 700);
+            } catch (error) {
+                document.getElementById('backupStatus').textContent = 'Could not import that backup.';
+                document.getElementById('backupStatus').className = 'status-line error';
+            }
+        });
+
+        document.getElementById('resetStudyDataBtn').addEventListener('click', () => {
+            if (!window.confirm('Reset tasks, notes, schedules, focus logs, plans, and bookmarks?')) {
+                return;
+            }
+            StudyQuest.resetStudyData();
+            document.getElementById('resetStatus').textContent = 'Study data reset.';
+        });
+
+        document.getElementById('resetAllDataBtn').addEventListener('click', () => {
+            if (!window.confirm('Reset everything, including your profile?')) {
+                return;
+            }
+            StudyQuest.resetAllData();
+            window.location.href = 'index.html';
+        });
+
+        renderThemeChoice();
+    </script>
+</body>
+</html>

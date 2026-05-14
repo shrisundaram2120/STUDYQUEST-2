@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyQuest | Tasks</title>
     <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
     <link rel="stylesheet" href="studyquest.css">
     <style>
         body {
@@ -26,21 +28,22 @@
                 <a href="home.html">Home</a>
                 <a class="active" href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
-                <a href="ttgen.html">Timetable Gen</a>
+                <a href="ttgen.html">Timetable</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
             </nav>
         </aside>
 
         <main class="main">
             <div class="topbar">
                 <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button">Menu</button>
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
                     <h2>Task planner</h2>
-                    <p>Capture work, assign focus time, and finish one thing at a time.</p>
+                    <p>Capture work, assign focus time, filter the board, and turn repeated study routines into automatic next steps.</p>
                 </div>
                 <div class="topbar-info">
                     <div class="clock-chip" id="clock">00:00:00</div>
@@ -52,17 +55,18 @@
                 <article class="card">
                     <div class="card-header">
                         <div>
-                            <p class="eyebrow">Add task</p>
-                            <h3 style="margin-bottom: 8px;">Plan your next study step</h3>
+                            <p class="eyebrow">Task editor</p>
+                            <h3 style="margin-bottom: 8px;" id="taskFormTitle">Plan your next study step</h3>
                         </div>
+                        <span class="pill" id="taskModePill">New task</span>
                     </div>
                     <div class="stack">
                         <input class="field" id="taskTitle" type="text" placeholder="Task title">
                         <div class="inline-form">
                             <select class="select" id="taskSubject">
-                                <option value="">Select subject</option>
+                                <option value="">General</option>
                             </select>
-                            <input class="field" id="taskMinutes" type="number" min="5" max="240" step="5" placeholder="Minutes">
+                            <input class="field" id="taskMinutes" type="text" inputmode="numeric" placeholder="Minutes">
                         </div>
                         <div class="inline-form">
                             <select class="select" id="taskPriority">
@@ -72,8 +76,16 @@
                             </select>
                             <input class="field" id="taskDeadline" type="date">
                         </div>
-                        <textarea class="textarea" id="taskNotes" placeholder="Task notes, chapters, questions, or reminders"></textarea>
-                        <button class="btn btn-primary" id="createTaskBtn" type="button">Save task</button>
+                        <select class="select" id="taskRepeat">
+                            <option value="None">Does not repeat</option>
+                            <option value="Daily">Repeat daily after completion</option>
+                            <option value="Weekly">Repeat weekly after completion</option>
+                        </select>
+                        <textarea class="textarea short" id="taskNotes" placeholder="Task notes, chapters, questions, or reminders"></textarea>
+                        <div class="button-row">
+                            <button class="btn btn-primary" id="createTaskBtn" type="button">Save task</button>
+                            <button class="btn btn-ghost hidden" id="cancelEditBtn" type="button">Cancel edit</button>
+                        </div>
                         <div class="status-line" id="taskStatus"></div>
                     </div>
                 </article>
@@ -83,12 +95,60 @@
                         <div>
                             <p class="eyebrow">Live session</p>
                             <h3 style="margin-bottom: 8px;">Single-task countdown</h3>
-                            <p class="muted">Start a timer from any task card. Only one countdown runs at a time.</p>
+                            <p class="muted">Starting a task timer logs completed focus minutes when the countdown finishes.</p>
                         </div>
                     </div>
                     <div class="focus-display" id="activeTimer">00:00</div>
                     <div class="pill" id="activeTimerLabel">No task running</div>
+                    <div class="metric-row" style="margin-top: 18px;">
+                        <div class="metric">
+                            <strong id="openTaskCount">0</strong>
+                            <span class="muted">Open</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="doneTaskCount">0</strong>
+                            <span class="muted">Done</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="overdueTaskCount">0</strong>
+                            <span class="muted">Overdue</span>
+                        </div>
+                    </div>
                 </article>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Filters</p>
+                        <h3 style="margin-bottom: 8px;">Find the right next task</h3>
+                    </div>
+                    <button class="btn btn-ghost" id="exportTasksBtn" type="button">Export CSV</button>
+                </div>
+                <div class="inline-form">
+                    <input class="field" id="taskSearch" type="search" placeholder="Search title or notes">
+                    <select class="select" id="filterStatus">
+                        <option value="all">All statuses</option>
+                        <option value="open">Open only</option>
+                        <option value="done">Completed only</option>
+                        <option value="overdue">Overdue only</option>
+                    </select>
+                    <select class="select" id="filterSubject">
+                        <option value="all">All subjects</option>
+                    </select>
+                    <select class="select" id="filterPriority">
+                        <option value="all">All priorities</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    <select class="select" id="sortTasks">
+                        <option value="deadline">Sort by deadline</option>
+                        <option value="priority">Sort by priority</option>
+                        <option value="created">Sort by newest</option>
+                        <option value="minutes">Sort by time</option>
+                    </select>
+                </div>
             </section>
 
             <section class="card" style="margin-top: 22px;">
@@ -97,11 +157,7 @@
                         <p class="eyebrow">Task board</p>
                         <h3 style="margin-bottom: 8px;">Your study tasks</h3>
                     </div>
-                    <div class="toolbar">
-                        <button class="btn btn-ghost" type="button" onclick="setFilter('all')">All</button>
-                        <button class="btn btn-ghost" type="button" onclick="setFilter('open')">Open</button>
-                        <button class="btn btn-ghost" type="button" onclick="setFilter('done')">Completed</button>
-                    </div>
+                    <button class="btn btn-secondary" id="clearCompletedBtn" type="button">Clear completed</button>
                 </div>
                 <div class="list" id="tasksList"></div>
             </section>
@@ -113,21 +169,33 @@
         StudyQuest.ensureProfile();
         StudyQuest.attachClock('clock', 'todayDate');
         StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+        StudyQuest.attachEnterSubmit('taskTitle', 'createTaskBtn');
 
+        const e = StudyQuest.escapeHTML;
         const profile = StudyQuest.getProfile();
         let tasks = StudyQuest.getTasks();
-        let filter = 'all';
         let countdown = null;
         let activeTaskId = null;
         let remainingSeconds = 0;
+        let editingTaskId = null;
 
         const subjectSelect = document.getElementById('taskSubject');
+        const filterSubject = document.getElementById('filterSubject');
         const taskStatus = document.getElementById('taskStatus');
         const tasksList = document.getElementById('tasksList');
         const activeTimer = document.getElementById('activeTimer');
         const activeTimerLabel = document.getElementById('activeTimerLabel');
 
-        subjectSelect.innerHTML += profile.subjects.map((subject) => `<option value="${subject}">${subject}</option>`).join('');
+        function fillSubjectOptions() {
+            const options = profile.subjects.map((subject) => `<option value="${e(subject)}">${e(subject)}</option>`).join('');
+            subjectSelect.innerHTML = '<option value="">General</option>' + options;
+            filterSubject.innerHTML = '<option value="all">All subjects</option><option value="">General</option>' + options;
+        }
+
+        function setStatus(message, type = 'success') {
+            taskStatus.textContent = message;
+            taskStatus.className = type === 'error' ? 'status-line error' : 'status-line';
+        }
 
         function formatCountdown(totalSeconds) {
             const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -139,74 +207,205 @@
             StudyQuest.saveTasks(tasks);
         }
 
-        function renderTasks() {
-            let visibleTasks = tasks;
-            if (filter === 'open') {
-                visibleTasks = tasks.filter((task) => !task.done);
-            } else if (filter === 'done') {
-                visibleTasks = tasks.filter((task) => task.done);
+        function priorityRank(priority) {
+            return { High: 0, Medium: 1, Low: 2 }[priority] ?? 3;
+        }
+
+        function getFilteredTasks() {
+            const search = document.getElementById('taskSearch').value.trim().toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+            const subject = document.getElementById('filterSubject').value;
+            const priority = document.getElementById('filterPriority').value;
+            const sort = document.getElementById('sortTasks').value;
+
+            return tasks
+                .filter((task) => {
+                    const haystack = `${task.title} ${task.notes || ''}`.toLowerCase();
+                    if (search && !haystack.includes(search)) return false;
+                    if (status === 'open' && task.done) return false;
+                    if (status === 'done' && !task.done) return false;
+                    if (status === 'overdue' && !StudyQuest.isOverdue(task)) return false;
+                    if (subject !== 'all' && (task.subject || '') !== subject) return false;
+                    if (priority !== 'all' && task.priority !== priority) return false;
+                    return true;
+                })
+                .sort((a, b) => {
+                    if (sort === 'priority') return priorityRank(a.priority) - priorityRank(b.priority);
+                    if (sort === 'created') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+                    if (sort === 'minutes') return Number(a.minutes || 0) - Number(b.minutes || 0);
+                    return String(a.deadline || '9999-12-31').localeCompare(String(b.deadline || '9999-12-31'));
+                });
+        }
+
+        function dueLabel(task) {
+            if (!task.deadline) {
+                return 'No deadline';
             }
+            const diff = StudyQuest.daysUntil(task.deadline);
+            if (diff < 0) return `${Math.abs(diff)} day overdue`;
+            if (diff === 0) return 'Due today';
+            if (diff === 1) return 'Due tomorrow';
+            return `Due in ${diff} days`;
+        }
+
+        function renderStats() {
+            const analytics = StudyQuest.getAnalytics();
+            document.getElementById('openTaskCount').textContent = analytics.openTasks.length;
+            document.getElementById('doneTaskCount').textContent = analytics.completedTasks.length;
+            document.getElementById('overdueTaskCount').textContent = analytics.overdueTasks.length;
+        }
+
+        function renderTasks() {
+            renderStats();
+            const visibleTasks = getFilteredTasks();
 
             if (!visibleTasks.length) {
-                tasksList.innerHTML = '<div class="empty">No tasks in this view yet.</div>';
+                tasksList.innerHTML = '<div class="empty">No tasks match this view yet.</div>';
                 return;
             }
 
-            tasksList.innerHTML = visibleTasks.map((task) => `
-                <div class="task-card ${task.done ? 'done' : ''}">
-                    <div class="task-topline">
-                        <div>
-                            <div class="task-title"><strong>${task.title}</strong></div>
-                            <div class="muted">${task.subject || 'General'} • ${task.priority} priority • ${task.minutes} mins</div>
-                            <div class="muted">${task.deadline ? `Due ${task.deadline}` : 'No deadline set'}</div>
-                            <div style="margin-top: 8px;">${task.notes || ''}</div>
-                        </div>
-                        <div class="toolbar">
-                            <button class="btn btn-secondary" type="button" onclick="toggleDone('${task.id}')">${task.done ? 'Reopen' : 'Done'}</button>
-                            <button class="btn btn-ghost" type="button" onclick="startTaskTimer('${task.id}')">Start timer</button>
-                            <button class="btn btn-danger" type="button" onclick="deleteTask('${task.id}')">Delete</button>
+            tasksList.innerHTML = visibleTasks.map((task) => {
+                const overdue = StudyQuest.isOverdue(task);
+                const priorityClass = `priority-${String(task.priority || 'Medium').toLowerCase()}`;
+                return `
+                    <div class="task-card ${task.done ? 'done' : ''}">
+                        <div class="task-topline">
+                            <div>
+                                <div class="task-title"><strong>${e(task.title)}</strong></div>
+                                <div class="task-meta">
+                                    <span class="priority-pill ${priorityClass}">${e(task.priority || 'Medium')}</span>
+                                    <span class="pill">${e(task.subject || 'General')}</span>
+                                    <span class="pill ${overdue ? 'danger' : ''}">${e(dueLabel(task))}</span>
+                                    <span class="pill">${Number(task.minutes || 0)} min</span>
+                                    ${task.repeat && task.repeat !== 'None' ? `<span class="pill">${e(task.repeat)}</span>` : ''}
+                                </div>
+                                ${task.notes ? `<div class="muted break-word" style="margin-top: 10px;">${StudyQuest.nl2br(task.notes)}</div>` : ''}
+                            </div>
+                            <div class="toolbar">
+                                <button class="btn btn-secondary" type="button" onclick="toggleDone('${task.id}')">${task.done ? 'Reopen' : 'Done'}</button>
+                                <button class="btn btn-ghost" type="button" onclick="editTask('${task.id}')">Edit</button>
+                                <button class="btn btn-ghost" type="button" onclick="startTaskTimer('${task.id}')">Start timer</button>
+                                <button class="btn btn-danger" type="button" onclick="deleteTask('${task.id}')">Delete</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        function clearForm() {
+            editingTaskId = null;
+            document.getElementById('taskFormTitle').textContent = 'Plan your next study step';
+            document.getElementById('taskModePill').textContent = 'New task';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskSubject').value = '';
+            document.getElementById('taskMinutes').value = '';
+            document.getElementById('taskPriority').value = 'High';
+            document.getElementById('taskDeadline').value = '';
+            document.getElementById('taskRepeat').value = 'None';
+            document.getElementById('taskNotes').value = '';
+        }
+
+        function nextDeadline(deadline, repeat) {
+            if (!deadline || repeat === 'None') {
+                return '';
+            }
+            const date = new Date(`${deadline}T00:00:00`);
+            date.setDate(date.getDate() + (repeat === 'Weekly' ? 7 : 1));
+            return date.toISOString().slice(0, 10);
         }
 
         document.getElementById('createTaskBtn').addEventListener('click', () => {
             const title = document.getElementById('taskTitle').value.trim();
             const subject = document.getElementById('taskSubject').value;
-            const minutes = Number(document.getElementById('taskMinutes').value || 0);
+            const minutes = StudyQuest.clampNumber(document.getElementById('taskMinutes').value, 5, 240, 0);
             const priority = document.getElementById('taskPriority').value;
             const deadline = document.getElementById('taskDeadline').value;
+            const repeat = document.getElementById('taskRepeat').value;
             const notes = document.getElementById('taskNotes').value.trim();
 
             if (!title || !minutes) {
-                taskStatus.textContent = 'Please enter a task title and time estimate.';
+                setStatus('Please enter a task title and time estimate.', 'error');
                 return;
             }
 
-            tasks.unshift({
-                id: StudyQuest.newId(),
-                title,
-                subject,
-                minutes,
-                priority,
-                deadline,
-                notes,
-                done: false,
-                createdAt: new Date().toISOString()
-            });
+            if (editingTaskId) {
+                tasks = tasks.map((task) => task.id === editingTaskId ? {
+                    ...task,
+                    title,
+                    subject,
+                    minutes,
+                    priority,
+                    deadline,
+                    repeat,
+                    notes,
+                    updatedAt: new Date().toISOString()
+                } : task);
+                setStatus('Task updated.');
+            } else {
+                tasks.unshift({
+                    id: StudyQuest.newId(),
+                    title,
+                    subject,
+                    minutes,
+                    priority,
+                    deadline,
+                    repeat,
+                    notes,
+                    done: false,
+                    createdAt: new Date().toISOString()
+                });
+                setStatus('Task saved.');
+            }
 
             saveTasks();
+            clearForm();
             renderTasks();
-            taskStatus.textContent = 'Task saved.';
-            document.getElementById('taskTitle').value = '';
-            document.getElementById('taskMinutes').value = '';
-            document.getElementById('taskDeadline').value = '';
-            document.getElementById('taskNotes').value = '';
         });
 
+        document.getElementById('cancelEditBtn').addEventListener('click', () => {
+            clearForm();
+            setStatus('');
+        });
+
+        window.editTask = (taskId) => {
+            const task = tasks.find((item) => item.id === taskId);
+            if (!task) return;
+            editingTaskId = taskId;
+            document.getElementById('taskFormTitle').textContent = 'Edit study task';
+            document.getElementById('taskModePill').textContent = 'Editing';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            document.getElementById('taskTitle').value = task.title || '';
+            document.getElementById('taskSubject').value = task.subject || '';
+            document.getElementById('taskMinutes').value = task.minutes || '';
+            document.getElementById('taskPriority').value = task.priority || 'Medium';
+            document.getElementById('taskDeadline').value = task.deadline || '';
+            document.getElementById('taskRepeat').value = task.repeat || 'None';
+            document.getElementById('taskNotes').value = task.notes || '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
         window.toggleDone = (taskId) => {
-            tasks = tasks.map((task) => task.id === taskId ? { ...task, done: !task.done } : task);
+            const task = tasks.find((item) => item.id === taskId);
+            if (!task) return;
+
+            const nextDone = !task.done;
+            tasks = tasks.map((item) => item.id === taskId ? { ...item, done: nextDone, completedAt: nextDone ? new Date().toISOString() : null } : item);
+
+            if (nextDone && task.repeat && task.repeat !== 'None' && task.deadline) {
+                tasks.unshift({
+                    ...task,
+                    id: StudyQuest.newId(),
+                    done: false,
+                    completedAt: null,
+                    createdAt: new Date().toISOString(),
+                    deadline: nextDeadline(task.deadline, task.repeat),
+                    generatedFrom: task.id
+                });
+                setStatus(`Completed and created the next ${task.repeat.toLowerCase()} task.`);
+            }
+
             saveTasks();
             renderTasks();
         };
@@ -232,9 +431,10 @@
 
             clearInterval(countdown);
             activeTaskId = taskId;
-            remainingSeconds = task.minutes * 60;
+            remainingSeconds = Number(task.minutes || 0) * 60;
             activeTimer.textContent = formatCountdown(remainingSeconds);
             activeTimerLabel.textContent = `Running: ${task.title}`;
+            activeTimerLabel.className = 'pill success';
             countdown = setInterval(() => {
                 remainingSeconds -= 1;
                 activeTimer.textContent = formatCountdown(Math.max(remainingSeconds, 0));
@@ -242,17 +442,41 @@
                     clearInterval(countdown);
                     countdown = null;
                     activeTaskId = null;
-                    activeTimerLabel.textContent = `Completed: ${task.title}`;
-                    alert(`Time is up for ${task.title}.`);
+                    activeTimerLabel.textContent = `Timer completed: ${task.title}`;
+                    activeTimerLabel.className = 'pill success';
+                    StudyQuest.logFocusSession({ minutes: Number(task.minutes || 0), label: task.title, source: 'task' });
                 }
             }, 1000);
         };
 
-        window.setFilter = (nextFilter) => {
-            filter = nextFilter;
-            renderTasks();
-        };
+        function exportTasksCsv() {
+            const header = ['Title', 'Subject', 'Priority', 'Minutes', 'Deadline', 'Repeat', 'Done', 'Notes'];
+            const lines = tasks.map((task) => [
+                task.title,
+                task.subject || 'General',
+                task.priority || 'Medium',
+                task.minutes || 0,
+                task.deadline || '',
+                task.repeat || 'None',
+                task.done ? 'Yes' : 'No',
+                String(task.notes || '').replace(/\s+/g, ' ')
+            ].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','));
+            StudyQuest.downloadText(`studyquest-tasks-${StudyQuest.todayKey()}.csv`, [header.join(','), ...lines].join('\n'), 'text/csv');
+        }
 
+        document.getElementById('exportTasksBtn').addEventListener('click', exportTasksCsv);
+        document.getElementById('clearCompletedBtn').addEventListener('click', () => {
+            tasks = tasks.filter((task) => !task.done);
+            saveTasks();
+            renderTasks();
+        });
+
+        ['taskSearch', 'filterStatus', 'filterSubject', 'filterPriority', 'sortTasks'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', renderTasks);
+            document.getElementById(id).addEventListener('change', renderTasks);
+        });
+
+        fillSubjectOptions();
         renderTasks();
     </script>
 </body>
