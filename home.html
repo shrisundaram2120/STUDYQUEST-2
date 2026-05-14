@@ -29,6 +29,8 @@
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
                 <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
@@ -167,6 +169,39 @@
                 <article class="card wide-card">
                     <div class="card-header">
                         <div>
+                            <p class="eyebrow">Analytics</p>
+                            <h3 style="margin-bottom: 8px;">Weekly progress</h3>
+                            <p class="muted">Focus trends, due cards, and exam pressure in one scan.</p>
+                        </div>
+                    </div>
+                    <div class="three-column">
+                        <div class="stat-card">
+                            <div>
+                                <strong id="dueCardCount">0</strong>
+                                <span class="muted">Cards due</span>
+                            </div>
+                            <a class="btn btn-secondary" href="flashcards.html">Review</a>
+                        </div>
+                        <div class="stat-card">
+                            <div>
+                                <strong id="nextExamCount">0</strong>
+                                <span class="muted">Days to next exam</span>
+                            </div>
+                            <a class="btn btn-secondary" href="exams.html">Plan</a>
+                        </div>
+                        <div class="stat-card">
+                            <div>
+                                <strong id="weekFocusCount">0</strong>
+                                <span class="muted">Focus minutes this week</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mini-chart" id="weeklyFocusChart" style="margin-top: 16px;"></div>
+                </article>
+
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
                             <p class="eyebrow">Activity</p>
                             <h3 style="margin-bottom: 8px;">Recent focus sessions</h3>
                         </div>
@@ -203,6 +238,7 @@
         const subjectChart = document.getElementById('subjectChart');
         const activityList = document.getElementById('activityList');
         const dailyGoalProgress = document.getElementById('dailyGoalProgress');
+        const weeklyFocusChart = document.getElementById('weeklyFocusChart');
 
         welcomeTitle.textContent = `Welcome back, ${profile.name}`;
         welcomeSubtitle.textContent = `${profile.className} | Goal: ${profile.goal}`;
@@ -226,6 +262,11 @@
             document.getElementById('todayFocusCount').textContent = analytics.todayFocusMinutes;
             document.getElementById('completionRateCount').textContent = `${analytics.completionRate}%`;
             document.getElementById('streakCount').textContent = analytics.streakDays;
+            document.getElementById('weekFocusCount').textContent = analytics.weekFocusMinutes;
+            document.getElementById('dueCardCount').textContent = StudyQuest.getDueFlashcards().length;
+            const nextExam = StudyQuest.getExamStats().upcoming[0];
+            document.getElementById('nextExamCount').textContent = nextExam ? StudyQuest.daysUntil(nextExam.date) : '-';
+            weeklyFocusChart.innerHTML = StudyQuest.renderMiniBars(StudyQuest.getWeekFocusSeries());
             dailyGoalProgress.innerHTML = `
                 <div class="split-actions">
                     <span class="muted">Daily focus goal: ${analytics.todayFocusMinutes}/${dailyGoal} minutes</span>

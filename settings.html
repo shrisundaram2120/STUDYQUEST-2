@@ -24,6 +24,8 @@
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
                 <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
@@ -74,6 +76,72 @@
                         <textarea class="textarea short" id="studyStyle" placeholder="What do you want help with most?"></textarea>
                         <button class="btn btn-primary" id="saveProfileBtn" type="button">Save profile</button>
                         <div class="status-line" id="profileStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">AI backend</p>
+                            <h3 style="margin-bottom: 8px;">Server-side AI endpoint</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="aiEndpoint" type="text" placeholder="/api/ai">
+                        <p class="muted">Use a server endpoint so public GitHub Pages never exposes an API key.</p>
+                        <button class="btn btn-primary" id="saveAiEndpointBtn" type="button">Save AI endpoint</button>
+                        <div class="status-line" id="aiEndpointStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Cloud sync</p>
+                            <h3 style="margin-bottom: 8px;">Account backup</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <select class="select" id="syncProvider">
+                            <option value="firebase">Firebase Auth + Firestore</option>
+                            <option value="supabase">Supabase Auth + table</option>
+                        </select>
+                        <textarea class="textarea short" id="firebaseConfig" placeholder='Firebase web config JSON, for example {"apiKey":"...","authDomain":"...","projectId":"..."}'></textarea>
+                        <div class="inline-form">
+                            <input class="field" id="supabaseUrl" type="text" placeholder="Supabase project URL">
+                            <input class="field" id="supabaseAnonKey" type="text" placeholder="Supabase anon key">
+                        </div>
+                        <div class="inline-form">
+                            <input class="field" id="syncEmail" type="text" inputmode="email" placeholder="Email">
+                            <input class="field" id="syncPassword" type="password" placeholder="Password">
+                        </div>
+                        <div class="button-row">
+                            <button class="btn btn-secondary" id="saveCloudConfigBtn" type="button">Save config</button>
+                            <button class="btn btn-primary" id="signUpSyncBtn" type="button">Sign up</button>
+                            <button class="btn btn-primary" id="loginSyncBtn" type="button">Log in</button>
+                            <button class="btn btn-secondary" id="pushCloudBtn" type="button">Push data</button>
+                            <button class="btn btn-ghost" id="pullCloudBtn" type="button">Pull data</button>
+                        </div>
+                        <div class="status-line" id="cloudStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Notifications</p>
+                            <h3 style="margin-bottom: 8px;">Study reminders</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <label class="toggle-row"><input id="taskReminders" type="checkbox"> Task reminders</label>
+                        <label class="toggle-row"><input id="scheduleReminders" type="checkbox"> Timetable reminders</label>
+                        <input class="field" id="streakReminderHour" type="time">
+                        <div class="button-row">
+                            <button class="btn btn-primary" id="enableNotificationsBtn" type="button">Enable notifications</button>
+                            <button class="btn btn-secondary" id="testNotificationBtn" type="button">Test notification</button>
+                        </div>
+                        <div class="status-line" id="notificationStatus"></div>
                     </div>
                 </article>
 
@@ -146,6 +214,16 @@
         document.getElementById('focusMinutes').value = settings.focusMinutes;
         document.getElementById('breakMinutes').value = settings.breakMinutes;
         document.getElementById('dailyFocusGoal').value = settings.dailyFocusGoal;
+        document.getElementById('aiEndpoint').value = settings.aiEndpoint || '/api/ai';
+        const cloudConfig = StudyQuest.getCloudConfig();
+        const notificationSettings = StudyQuest.getNotificationSettings();
+        document.getElementById('syncProvider').value = cloudConfig.provider || 'firebase';
+        document.getElementById('firebaseConfig').value = cloudConfig.firebaseConfig || '';
+        document.getElementById('supabaseUrl').value = cloudConfig.supabaseUrl || '';
+        document.getElementById('supabaseAnonKey').value = cloudConfig.supabaseAnonKey || '';
+        document.getElementById('taskReminders').checked = Boolean(notificationSettings.taskReminders);
+        document.getElementById('scheduleReminders').checked = Boolean(notificationSettings.scheduleReminders);
+        document.getElementById('streakReminderHour').value = notificationSettings.streakReminderHour || '19:00';
 
         function renderThemeChoice() {
             themeChoice.innerHTML = Object.entries(StudyQuest.themeLabels).map(([key, label]) => `
@@ -194,6 +272,167 @@
             };
             StudyQuest.saveSettings(settings);
             document.getElementById('settingsStatus').textContent = 'Preferences saved.';
+        });
+
+        document.getElementById('saveAiEndpointBtn').addEventListener('click', () => {
+            settings = {
+                ...settings,
+                aiEndpoint: document.getElementById('aiEndpoint').value.trim() || '/api/ai'
+            };
+            StudyQuest.saveSettings(settings);
+            document.getElementById('aiEndpointStatus').textContent = 'AI endpoint saved.';
+        });
+
+        document.getElementById('saveCloudConfigBtn').addEventListener('click', () => {
+            StudyQuest.saveCloudConfig({
+                provider: document.getElementById('syncProvider').value,
+                firebaseConfig: document.getElementById('firebaseConfig').value.trim(),
+                supabaseUrl: document.getElementById('supabaseUrl').value.trim(),
+                supabaseAnonKey: document.getElementById('supabaseAnonKey').value.trim()
+            });
+            document.getElementById('cloudStatus').textContent = 'Cloud config saved.';
+        });
+
+        async function getCloudClient() {
+            const config = StudyQuest.getCloudConfig();
+            if (config.provider === 'firebase') {
+                const firebaseConfig = JSON.parse(config.firebaseConfig || '{}');
+                if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+                    throw new Error('Firebase config is incomplete.');
+                }
+                const appMod = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
+                const authMod = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js');
+                const storeMod = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
+                const app = appMod.getApps().length ? appMod.getApps()[0] : appMod.initializeApp(firebaseConfig);
+                return { provider: 'firebase', app, authMod, storeMod, auth: authMod.getAuth(app), db: storeMod.getFirestore(app) };
+            }
+            const supa = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+            if (!config.supabaseUrl || !config.supabaseAnonKey) {
+                throw new Error('Supabase URL and anon key are required.');
+            }
+            return { provider: 'supabase', client: supa.createClient(config.supabaseUrl, config.supabaseAnonKey) };
+        }
+
+        async function authCloud(kind) {
+            const email = document.getElementById('syncEmail').value.trim();
+            const password = document.getElementById('syncPassword').value;
+            if (!email || !password) {
+                throw new Error('Email and password are required.');
+            }
+            const cloud = await getCloudClient();
+            if (cloud.provider === 'firebase') {
+                const result = kind === 'signup'
+                    ? await cloud.authMod.createUserWithEmailAndPassword(cloud.auth, email, password)
+                    : await cloud.authMod.signInWithEmailAndPassword(cloud.auth, email, password);
+                StudyQuest.saveCloudSession({ provider: 'firebase', uid: result.user.uid, email: result.user.email });
+                return result.user.uid;
+            }
+            const { data, error } = kind === 'signup'
+                ? await cloud.client.auth.signUp({ email, password })
+                : await cloud.client.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            StudyQuest.saveCloudSession({ provider: 'supabase', uid: data.user.id, email: data.user.email });
+            return data.user.id;
+        }
+
+        async function pushCloudData() {
+            const cloud = await getCloudClient();
+            const session = StudyQuest.getCloudSession();
+            if (!session?.uid) {
+                throw new Error('Log in before syncing.');
+            }
+            const payload = StudyQuest.collectSyncPayload();
+            if (cloud.provider === 'firebase') {
+                await cloud.storeMod.setDoc(cloud.storeMod.doc(cloud.db, 'studyquestSync', session.uid), payload);
+                return;
+            }
+            const { error } = await cloud.client.from('studyquest_sync').upsert({ user_id: session.uid, payload, updated_at: new Date().toISOString() });
+            if (error) throw error;
+        }
+
+        async function pullCloudData() {
+            const cloud = await getCloudClient();
+            const session = StudyQuest.getCloudSession();
+            if (!session?.uid) {
+                throw new Error('Log in before syncing.');
+            }
+            let payload = null;
+            if (cloud.provider === 'firebase') {
+                const snap = await cloud.storeMod.getDoc(cloud.storeMod.doc(cloud.db, 'studyquestSync', session.uid));
+                payload = snap.exists() ? snap.data() : null;
+            } else {
+                const { data, error } = await cloud.client.from('studyquest_sync').select('payload').eq('user_id', session.uid).single();
+                if (error) throw error;
+                payload = data?.payload;
+            }
+            if (!payload?.data) {
+                throw new Error('No cloud backup found.');
+            }
+            Object.entries(payload.data).forEach(([key, value]) => {
+                if (value !== null) localStorage.setItem(key, JSON.stringify(value));
+            });
+        }
+
+        document.getElementById('signUpSyncBtn').addEventListener('click', async () => {
+            try {
+                await authCloud('signup');
+                document.getElementById('cloudStatus').textContent = 'Cloud account created.';
+            } catch (error) {
+                document.getElementById('cloudStatus').textContent = error.message;
+                document.getElementById('cloudStatus').className = 'status-line error';
+            }
+        });
+
+        document.getElementById('loginSyncBtn').addEventListener('click', async () => {
+            try {
+                await authCloud('login');
+                document.getElementById('cloudStatus').textContent = 'Logged in for sync.';
+            } catch (error) {
+                document.getElementById('cloudStatus').textContent = error.message;
+                document.getElementById('cloudStatus').className = 'status-line error';
+            }
+        });
+
+        document.getElementById('pushCloudBtn').addEventListener('click', async () => {
+            try {
+                await pushCloudData();
+                document.getElementById('cloudStatus').textContent = 'Local data pushed to cloud.';
+            } catch (error) {
+                document.getElementById('cloudStatus').textContent = error.message;
+                document.getElementById('cloudStatus').className = 'status-line error';
+            }
+        });
+
+        document.getElementById('pullCloudBtn').addEventListener('click', async () => {
+            try {
+                await pullCloudData();
+                document.getElementById('cloudStatus').textContent = 'Cloud data restored. Reloading...';
+                window.setTimeout(() => window.location.reload(), 700);
+            } catch (error) {
+                document.getElementById('cloudStatus').textContent = error.message;
+                document.getElementById('cloudStatus').className = 'status-line error';
+            }
+        });
+
+        document.getElementById('enableNotificationsBtn').addEventListener('click', async () => {
+            const result = await StudyQuest.requestNotifications();
+            StudyQuest.saveNotificationSettings({
+                taskReminders: document.getElementById('taskReminders').checked,
+                scheduleReminders: document.getElementById('scheduleReminders').checked,
+                streakReminderHour: document.getElementById('streakReminderHour').value || '19:00'
+            });
+            document.getElementById('notificationStatus').textContent = `Notification permission: ${result}.`;
+        });
+
+        document.getElementById('testNotificationBtn').addEventListener('click', () => {
+            StudyQuest.saveNotificationSettings({
+                enabled: true,
+                taskReminders: document.getElementById('taskReminders').checked,
+                scheduleReminders: document.getElementById('scheduleReminders').checked,
+                streakReminderHour: document.getElementById('streakReminderHour').value || '19:00'
+            });
+            const sent = StudyQuest.notify('StudyQuest reminder', 'Notifications are ready for tasks, timetable blocks, and streak nudges.');
+            document.getElementById('notificationStatus').textContent = sent ? 'Test notification sent.' : 'Enable browser notification permission first.';
         });
 
         document.getElementById('exportDataBtn').addEventListener('click', StudyQuest.exportData);

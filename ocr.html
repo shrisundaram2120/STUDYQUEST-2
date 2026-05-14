@@ -25,6 +25,8 @@
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
                 <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
                 <a class="active" href="ocr.html">Img-Text</a>
@@ -60,6 +62,7 @@
                         <input class="field" id="ocrTitle" type="text" placeholder="Note title">
                         <textarea class="textarea" id="ocrText" placeholder="Paste extracted OCR text here after using the OCR workspace..."></textarea>
                         <div class="button-row">
+                            <button class="btn btn-secondary" id="extractOcrBtn" type="button">Extract text</button>
                             <button class="btn btn-primary" id="saveOcrNoteBtn" type="button">Save to Notes</button>
                             <button class="btn btn-secondary" id="sendToSummarizerBtn" type="button">Summarizer</button>
                             <button class="btn btn-ghost" id="sendOcrToAiBtn" type="button">AI Quest</button>
@@ -83,6 +86,7 @@
             </section>
         </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="studyquest.js"></script>
     <script>
         StudyQuest.ensureProfile();
@@ -107,6 +111,26 @@
             }
             return true;
         }
+
+        document.getElementById('extractOcrBtn').addEventListener('click', async () => {
+            const [file] = imageInput.files || [];
+            if (!file) {
+                setStatus('Choose an image before extracting text.', 'error');
+                return;
+            }
+            if (!window.Tesseract) {
+                setStatus('OCR engine is unavailable. Check your connection or use the external OCR workspace.', 'error');
+                return;
+            }
+            setStatus('Extracting text from image...');
+            try {
+                const result = await Tesseract.recognize(file, 'eng');
+                ocrText.value = result.data.text.trim();
+                setStatus('Text extracted.');
+            } catch (error) {
+                setStatus('Could not extract text from this image.', 'error');
+            }
+        });
 
         imageInput.addEventListener('change', () => {
             const [file] = imageInput.files || [];

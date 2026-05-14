@@ -563,6 +563,40 @@ button {
     gap: 10px;
 }
 
+.mini-chart {
+    min-height: 150px;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+}
+
+.mini-bar {
+    min-height: 118px;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 8px;
+    align-items: end;
+    text-align: center;
+    color: var(--muted);
+}
+
+.mini-bar span {
+    display: block;
+    width: 100%;
+    min-height: 6px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    background: linear-gradient(180deg, var(--blue), var(--green));
+}
+
+.mini-bar small {
+    font-size: 0.78rem;
+}
+
 .chart-row {
     display: grid;
     grid-template-columns: minmax(86px, 120px) 1fr minmax(42px, auto);
@@ -828,6 +862,26 @@ button {
     background: var(--accent-soft);
 }
 
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+}
+
+.toggle-row input {
+    width: 18px;
+    height: 18px;
+}
+
+.mobile-bottom-nav {
+    display: none;
+}
+
 .hidden {
     display: none !important;
 }
@@ -883,7 +937,7 @@ button {
     }
 
     .main {
-        padding: 18px;
+        padding: 18px 18px 86px;
     }
 
     .dashboard-grid,
@@ -942,9 +996,44 @@ button {
     }
 }
 
+@media (max-width: 760px) {
+    .mobile-bottom-nav {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        z-index: 10;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+        padding: 8px;
+        border-radius: 16px;
+        background: rgba(14, 22, 35, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(16px);
+    }
+
+    .mobile-bottom-nav a {
+        min-height: 46px;
+        display: grid;
+        place-items: center;
+        color: rgba(255, 249, 242, 0.78);
+        text-decoration: none;
+        border-radius: 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .mobile-bottom-nav a.active {
+        background: rgba(255, 255, 255, 0.14);
+        color: #fff9f2;
+    }
+}
+
 @media (max-width: 640px) {
     .main {
-        padding: 13px;
+        padding: 13px 13px 88px;
     }
 
     .page-title h2 {

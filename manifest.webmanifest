@@ -2,9 +2,12 @@
   "name": "StudyQuest",
   "short_name": "StudyQuest",
   "description": "A browser-based study planner with tasks, notes, timetables, focus tracking, and smart study tools.",
-  "start_url": "index.html",
+  "id": "./index.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["education", "productivity"],
   "background_color": "#17202b",
   "theme_color": "#17202b",
   "icons": [
@@ -18,6 +21,23 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tasks",
+      "url": "tasks.html",
+      "description": "Open the StudyQuest task planner"
+    },
+    {
+      "name": "Flashcards",
+      "url": "flashcards.html",
+      "description": "Review due flashcards"
+    },
+    {
+      "name": "Exam Mode",
+      "url": "exams.html",
+      "description": "Open exam countdowns and revision plans"
     }
   ]
 }

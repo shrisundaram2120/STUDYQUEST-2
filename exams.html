@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Exam Mode</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('wallpapersden.com_ai-landscape-2023-digital-art_1952x1120.jpg'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Exam mode</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a class="active" href="exams.html">Exam Mode</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Exam mode</h2>
+                    <p>Track exam countdowns, syllabus confidence, weak topics, and generate deadline-aware revision plans.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="two-column">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Create</p>
+                            <h3 style="margin-bottom: 8px;">Add an exam</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="examTitle" type="text" placeholder="Exam title">
+                        <div class="inline-form">
+                            <input class="field" id="examSubject" type="text" placeholder="Subject">
+                            <input class="field" id="examDate" type="date">
+                            <input class="field" id="targetScore" type="text" inputmode="numeric" placeholder="Target score">
+                        </div>
+                        <textarea class="textarea short" id="examTopics" placeholder="Topics, one per line. Optional format: Topic name | confidence 1-5 | weight 1-5"></textarea>
+                        <button class="btn btn-primary" id="saveExamBtn" type="button">Save exam</button>
+                        <div class="status-line" id="examStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Weak topics</p>
+                            <h3 style="margin-bottom: 8px;">Highest leverage</h3>
+                        </div>
+                    </div>
+                    <div class="list" id="weakTopicsList"></div>
+                </article>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Countdowns</p>
+                        <h3 style="margin-bottom: 8px;">Upcoming exams</h3>
+                    </div>
+                </div>
+                <div class="list" id="examsList"></div>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Revision plan</p>
+                        <h3 style="margin-bottom: 8px;" id="planTitle">Select an exam</h3>
+                    </div>
+                    <button class="btn btn-secondary" id="addPlanTasksBtn" type="button">Add plan to Tasks</button>
+                </div>
+                <div class="list" id="revisionPlan"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        let selectedExamId = null;
+        let currentPlan = [];
+        const examsList = document.getElementById('examsList');
+        const weakTopicsList = document.getElementById('weakTopicsList');
+        const revisionPlan = document.getElementById('revisionPlan');
+        const examStatus = document.getElementById('examStatus');
+
+        function parseTopics(value) {
+            return value.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
+                const [name, confidence, weight] = line.split('|').map((part) => part.trim());
+                return {
+                    id: StudyQuest.newId(),
+                    name,
+                    confidence: StudyQuest.clampNumber(confidence, 1, 5, 3),
+                    weight: StudyQuest.clampNumber(weight, 1, 5, 3)
+                };
+            });
+        }
+
+        function renderWeakTopics() {
+            const weak = StudyQuest.getExamStats().weakestTopics;
+            if (!weak.length) {
+                weakTopicsList.innerHTML = '<div class="empty">Add syllabus topics to see weak areas.</div>';
+                return;
+            }
+            weakTopicsList.innerHTML = weak.map((topic) => `
+                <div class="list-item">
+                    <strong>${e(topic.name)}</strong>
+                    <div class="task-meta">
+                        <span class="pill danger">Confidence ${Number(topic.confidence || 1)}/5</span>
+                        <span class="pill">Weight ${Number(topic.weight || 1)}/5</span>
+                        <span class="pill">${e(topic.examTitle)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderExams() {
+            const exams = StudyQuest.getExams();
+            renderWeakTopics();
+            if (!exams.length) {
+                examsList.innerHTML = '<div class="empty">No exams yet. Add your first exam above.</div>';
+                revisionPlan.innerHTML = '<div class="empty">Select an exam to generate a plan.</div>';
+                return;
+            }
+            examsList.innerHTML = exams.map((exam) => {
+                const days = StudyQuest.daysUntil(exam.date);
+                const topicCount = (exam.topics || []).length;
+                return `
+                    <div class="task-card">
+                        <div class="task-topline">
+                            <div>
+                                <strong>${e(exam.title)}</strong>
+                                <div class="task-meta">
+                                    <span class="pill ${days !== null && days <= 7 ? 'danger' : ''}">${days === null ? 'No date' : `${days} days`}</span>
+                                    <span class="pill">${e(exam.subject)}</span>
+                                    <span class="pill">${topicCount} topics</span>
+                                    <span class="pill">Target ${Number(exam.targetScore || 80)}%</span>
+                                </div>
+                            </div>
+                            <div class="toolbar">
+                                <button class="btn btn-secondary" type="button" onclick="selectExam('${exam.id}')">Plan</button>
+                                <button class="btn btn-danger" type="button" onclick="deleteExam('${exam.id}')">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.selectExam = (examId) => {
+            const exam = StudyQuest.getExams().find((item) => item.id === examId);
+            if (!exam) return;
+            selectedExamId = examId;
+            currentPlan = StudyQuest.buildExamRevisionPlan(exam);
+            document.getElementById('planTitle').textContent = `${exam.title} revision plan`;
+            if (!currentPlan.length) {
+                revisionPlan.innerHTML = '<div class="empty">Add syllabus topics to generate a revision plan.</div>';
+                return;
+            }
+            revisionPlan.innerHTML = currentPlan.map((row) => `
+                <div class="schedule-row">
+                    <strong>Day ${row.day}: ${e(row.title)}</strong>
+                    <div class="muted">${e(row.focus)} | ${row.minutes} minutes</div>
+                </div>
+            `).join('');
+        };
+
+        window.deleteExam = (examId) => {
+            StudyQuest.saveExams(StudyQuest.getExams().filter((exam) => exam.id !== examId));
+            if (selectedExamId === examId) {
+                selectedExamId = null;
+                currentPlan = [];
+            }
+            renderExams();
+        };
+
+        document.getElementById('saveExamBtn').addEventListener('click', () => {
+            const title = document.getElementById('examTitle').value.trim();
+            const subject = document.getElementById('examSubject').value.trim() || 'General';
+            const date = document.getElementById('examDate').value;
+            const targetScore = document.getElementById('targetScore').value;
+            if (!title || !date) {
+                examStatus.textContent = 'Exam title and date are required.';
+                examStatus.className = 'status-line error';
+                return;
+            }
+            StudyQuest.addExam({
+                title,
+                subject,
+                date,
+                targetScore,
+                topics: parseTopics(document.getElementById('examTopics').value)
+            });
+            document.getElementById('examTitle').value = '';
+            document.getElementById('examSubject').value = '';
+            document.getElementById('examDate').value = '';
+            document.getElementById('targetScore').value = '';
+            document.getElementById('examTopics').value = '';
+            examStatus.textContent = 'Exam saved.';
+            examStatus.className = 'status-line';
+            renderExams();
+        });
+
+        document.getElementById('addPlanTasksBtn').addEventListener('click', () => {
+            const exam = StudyQuest.getExams().find((item) => item.id === selectedExamId);
+            if (!exam || !currentPlan.length) {
+                return;
+            }
+            const tasks = StudyQuest.getTasks();
+            currentPlan.forEach((row) => {
+                tasks.unshift({
+                    id: StudyQuest.newId(),
+                    title: `${exam.title}: ${row.title}`,
+                    subject: exam.subject,
+                    minutes: row.minutes,
+                    priority: row.focus === 'Learn and practice' ? 'High' : 'Medium',
+                    deadline: exam.date,
+                    repeat: 'None',
+                    notes: row.focus,
+                    done: false,
+                    createdAt: new Date().toISOString()
+                });
+            });
+            StudyQuest.saveTasks(tasks);
+            examStatus.textContent = 'Revision plan added to Tasks.';
+        });
+
+        renderExams();
+    </script>
+</body>
+</html>

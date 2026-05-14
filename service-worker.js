@@ -1,4 +1,4 @@
-const CACHE_NAME = "studyquest-v3";
+const CACHE_NAME = "studyquest-v5";
 const CORE_ASSETS = [
     "./",
     "./index.html",
@@ -6,6 +6,8 @@ const CORE_ASSETS = [
     "./tasks.html",
     "./notes.html",
     "./ttgen.html",
+    "./flashcards.html",
+    "./exams.html",
     "./source.html",
     "./aiquest.html",
     "./ocr.html",
@@ -41,6 +43,14 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
+    const requestUrl = new URL(event.request.url);
+    const isSameOrigin = requestUrl.origin === self.location.origin;
+
+    if (!isSameOrigin || requestUrl.pathname.startsWith("/api/")) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) {
@@ -51,7 +61,23 @@ self.addEventListener("fetch", (event) => {
                 const copy = response.clone();
                 caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
                 return response;
-            }).catch(() => caches.match("./home.html"));
+            }).catch(() => {
+                if (event.request.mode === "navigate") {
+                    return caches.match("./home.html");
+                }
+                return caches.match(event.request);
+            });
         })
     );
+});
+
+self.addEventListener("message", (event) => {
+    if (event.data?.type !== "STUDYQUEST_NOTIFY") {
+        return;
+    }
+    self.registration.showNotification(event.data.title || "StudyQuest", {
+        body: event.data.body || "You have a study reminder.",
+        icon: "./studyquest-high-resolution-logo.png",
+        badge: "./studyquest-high-resolution-logo-black-transparent.png"
+    });
 });

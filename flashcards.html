@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Flashcards</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('HD-wallpaper-the-path-of-tomorrow-alone-artist-artwork-digital-art.jpg'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Flashcards</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a class="active" href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Flashcards</h2>
+                    <p>Review due cards with again, hard, good, and easy scheduling so revision returns at the right time.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="three-column">
+                <article class="card">
+                    <p class="eyebrow">Due now</p>
+                    <h3 style="margin-bottom: 8px;">Review queue</h3>
+                    <div class="focus-display" id="dueCount">0</div>
+                    <p class="muted">Cards due today or earlier.</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">Decks</p>
+                    <h3 style="margin-bottom: 8px;">Active sets</h3>
+                    <div class="focus-display" id="deckCount">0</div>
+                    <p class="muted">Organized by subject or source.</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">Mastery</p>
+                    <h3 style="margin-bottom: 8px;">Long interval</h3>
+                    <div class="focus-display" id="masteredCount">0</div>
+                    <p class="muted">Cards scheduled 14+ days out.</p>
+                </article>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Review</p>
+                            <h3 style="margin-bottom: 8px;">Next due card</h3>
+                        </div>
+                    </div>
+                    <div id="reviewCard" class="stack"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Create</p>
+                            <h3 style="margin-bottom: 8px;">Add a card</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <input class="field" id="deckName" type="text" placeholder="Deck or subject">
+                        <textarea class="textarea short" id="cardFront" placeholder="Question or prompt"></textarea>
+                        <textarea class="textarea short" id="cardBack" placeholder="Answer"></textarea>
+                        <button class="btn btn-primary" id="addCardBtn" type="button">Add card</button>
+                        <div class="status-line" id="cardStatus"></div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Library</p>
+                        <h3 style="margin-bottom: 8px;">All cards</h3>
+                    </div>
+                    <button class="btn btn-ghost" id="exportCardsBtn" type="button">Export CSV</button>
+                </div>
+                <div class="list" id="cardsList"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        let cards = StudyQuest.getFlashcards();
+        const reviewCard = document.getElementById('reviewCard');
+        const cardsList = document.getElementById('cardsList');
+        const cardStatus = document.getElementById('cardStatus');
+
+        function renderStats() {
+            const stats = StudyQuest.getFlashcardStats();
+            document.getElementById('dueCount').textContent = stats.due;
+            document.getElementById('deckCount').textContent = stats.decks.length;
+            document.getElementById('masteredCount').textContent = stats.mastered;
+        }
+
+        function renderReview() {
+            const due = StudyQuest.getDueFlashcards();
+            if (!due.length) {
+                reviewCard.innerHTML = '<div class="empty">No cards due. Add new cards or come back after your next review interval.</div>';
+                return;
+            }
+            const card = due[0];
+            reviewCard.innerHTML = `
+                <div class="flashcard open">
+                    <span class="pill">${e(card.deck || 'General')}</span>
+                    <strong>${e(card.front)}</strong>
+                    <div class="answer muted">${e(card.back)}</div>
+                </div>
+                <div class="button-row">
+                    <button class="btn btn-danger" type="button" onclick="review('${card.id}', 'again')">Again</button>
+                    <button class="btn btn-secondary" type="button" onclick="review('${card.id}', 'hard')">Hard</button>
+                    <button class="btn btn-primary" type="button" onclick="review('${card.id}', 'good')">Good</button>
+                    <button class="btn btn-ghost" type="button" onclick="review('${card.id}', 'easy')">Easy</button>
+                </div>
+            `;
+        }
+
+        function renderCards() {
+            cards = StudyQuest.getFlashcards();
+            renderStats();
+            renderReview();
+            if (!cards.length) {
+                cardsList.innerHTML = '<div class="empty">No flashcards yet. Generate them in AI Quest or add one here.</div>';
+                return;
+            }
+            cardsList.innerHTML = cards.map((card) => `
+                <div class="task-card">
+                    <div class="task-topline">
+                        <div>
+                            <strong>${e(card.front)}</strong>
+                            <div class="muted break-word">${e(card.back)}</div>
+                            <div class="task-meta">
+                                <span class="pill">${e(card.deck || 'General')}</span>
+                                <span class="pill">Due ${e(new Date(card.dueAt).toLocaleDateString())}</span>
+                                <span class="pill">${Number(card.reviews || 0)} reviews</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" type="button" onclick="deleteCard('${card.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.review = (cardId, rating) => {
+            StudyQuest.reviewFlashcard(cardId, rating);
+            renderCards();
+        };
+
+        window.deleteCard = (cardId) => {
+            cards = StudyQuest.getFlashcards().filter((card) => card.id !== cardId);
+            StudyQuest.saveFlashcards(cards);
+            renderCards();
+        };
+
+        document.getElementById('addCardBtn').addEventListener('click', () => {
+            const deck = document.getElementById('deckName').value.trim() || 'General';
+            const front = document.getElementById('cardFront').value.trim();
+            const back = document.getElementById('cardBack').value.trim();
+            if (!front || !back) {
+                cardStatus.textContent = 'Add both a prompt and an answer.';
+                cardStatus.className = 'status-line error';
+                return;
+            }
+            StudyQuest.addFlashcards([{ front, back, deck, source: 'Manual' }], deck);
+            document.getElementById('cardFront').value = '';
+            document.getElementById('cardBack').value = '';
+            cardStatus.textContent = 'Card added.';
+            cardStatus.className = 'status-line';
+            renderCards();
+        });
+
+        document.getElementById('exportCardsBtn').addEventListener('click', () => {
+            const lines = StudyQuest.getFlashcards().map((card) => [
+                card.deck || 'General',
+                card.front,
+                card.back,
+                card.dueAt,
+                card.reviews || 0
+            ].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','));
+            StudyQuest.downloadText(`studyquest-flashcards-${StudyQuest.todayKey()}.csv`, ['Deck,Front,Back,Due,Reviews', ...lines].join('\n'), 'text/csv');
+        });
+
+        renderCards();
+    </script>
+</body>
+</html>

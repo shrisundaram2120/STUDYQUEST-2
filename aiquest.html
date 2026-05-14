@@ -24,6 +24,8 @@
                 <a href="tasks.html">Tasks</a>
                 <a href="notes.html">Notes</a>
                 <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
                 <a href="source.html">Sources</a>
                 <a class="active" href="aiquest.html">AI Quest</a>
                 <a href="ocr.html">Img-Text</a>
@@ -78,7 +80,10 @@
                             <p class="eyebrow">Output</p>
                             <h3 style="margin-bottom: 8px;" id="outputTitle">Ready when you are</h3>
                         </div>
-                        <button class="btn btn-ghost" id="saveOutputBtn" type="button">Save to Notes</button>
+                        <div class="toolbar">
+                            <button class="btn btn-secondary" id="saveCardsBtn" type="button">Save cards</button>
+                            <button class="btn btn-ghost" id="saveOutputBtn" type="button">Save to Notes</button>
+                        </div>
                     </div>
                     <div class="ai-output" id="aiOutput">
                         <div class="empty">Generated study material will appear here.</div>
@@ -117,6 +122,7 @@
         const outputTitle = document.getElementById('outputTitle');
         let currentOutputText = '';
         let currentOutputName = '';
+        let currentCards = [];
 
         noteSelect.innerHTML += notes.map((note) => `<option value="${note.id}">${e(note.name)}</option>`).join('');
 
@@ -137,6 +143,23 @@
             aiOutput.innerHTML = html;
             currentOutputText = rawText;
             currentOutputName = title;
+        }
+
+        async function tryServerAi(mode, output = 'text') {
+            const text = getInputText();
+            try {
+                const result = await StudyQuest.callAiTool(mode, text, {
+                    title: sourceTitle.value.trim(),
+                    output
+                });
+                aiStatus.textContent = 'Generated with the StudyQuest AI backend.';
+                aiStatus.className = 'status-line';
+                return result;
+            } catch (error) {
+                aiStatus.textContent = 'AI backend unavailable. Used offline study generator instead.';
+                aiStatus.className = 'status-line';
+                return null;
+            }
         }
 
         function requireText() {
@@ -163,27 +186,36 @@
             aiStatus.className = 'status-line';
         });
 
-        document.getElementById('summaryBtn').addEventListener('click', () => {
+        document.getElementById('summaryBtn').addEventListener('click', async () => {
             if (!requireText()) return;
-            const summary = StudyQuest.summarizeText(getInputText(), 5);
+            currentCards = [];
+            const server = await tryServerAi('summary', 'text');
+            const summary = server?.text || StudyQuest.summarizeText(getInputText(), 5);
             setOutput('Revision summary', `<div class="list-item">${StudyQuest.nl2br(summary)}</div>`, `Revision summary\n\n${summary}`);
         });
 
-        document.getElementById('flashcardsBtn').addEventListener('click', () => {
+        document.getElementById('flashcardsBtn').addEventListener('click', async () => {
             if (!requireText()) return;
-            const cards = StudyQuest.generateFlashcards(getInputText(), 8);
+            const server = await tryServerAi('flashcards', 'cards');
+            const cards = Array.isArray(server?.cards) && server.cards.length ? server.cards : StudyQuest.generateFlashcards(getInputText(), 8);
+            currentCards = cards.map((card) => ({
+                front: card.front || card.question || '',
+                back: card.back || card.answer || '',
+                deck: sourceTitle.value.trim() || 'AI Quest',
+                source: 'AI Quest'
+            })).filter((card) => card.front && card.back);
             if (!cards.length) {
                 setOutput('Flashcards', '<div class="empty">Add a longer passage to generate flashcards.</div>', '');
                 return;
             }
-            const html = cards.map((card) => `
+            const html = currentCards.map((card) => `
                 <div class="flashcard">
                     <strong>${e(card.front)}</strong>
                     <div class="answer muted">${e(card.back)}</div>
                     <button class="btn btn-ghost" type="button" data-reveal-card>Reveal answer</button>
                 </div>
             `).join('');
-            setOutput('Flashcards', html, cards.map((card) => `${card.front}\n${card.back}`).join('\n\n'));
+            setOutput('Flashcards', html, currentCards.map((card) => `${card.front}\n${card.back}`).join('\n\n'));
             aiOutput.querySelectorAll('[data-reveal-card]').forEach((button) => {
                 button.addEventListener('click', () => {
                     button.closest('.flashcard').classList.toggle('open');
@@ -192,9 +224,11 @@
             });
         });
 
-        document.getElementById('quizBtn').addEventListener('click', () => {
+        document.getElementById('quizBtn').addEventListener('click', async () => {
             if (!requireText()) return;
-            const quiz = StudyQuest.generateQuiz(getInputText(), 6);
+            currentCards = [];
+            const server = await tryServerAi('quiz', 'quiz');
+            const quiz = Array.isArray(server?.questions) && server.questions.length ? server.questions : StudyQuest.generateQuiz(getInputText(), 6);
             if (!quiz.length) {
                 setOutput('Practice quiz', '<div class="empty">Add a longer passage to generate quiz questions.</div>', '');
                 return;
@@ -217,10 +251,23 @@
             });
         });
 
-        document.getElementById('explainBtn').addEventListener('click', () => {
+        document.getElementById('explainBtn').addEventListener('click', async () => {
             if (!requireText()) return;
-            const explanation = StudyQuest.explainSimply(getInputText());
+            currentCards = [];
+            const server = await tryServerAi('explain', 'text');
+            const explanation = server?.text || StudyQuest.explainSimply(getInputText());
             setOutput('Simple explanation', `<div class="list-item">${StudyQuest.nl2br(explanation)}</div>`, explanation);
+        });
+
+        document.getElementById('saveCardsBtn').addEventListener('click', () => {
+            if (!currentCards.length) {
+                aiStatus.textContent = 'Generate flashcards before saving cards.';
+                aiStatus.className = 'status-line error';
+                return;
+            }
+            StudyQuest.addFlashcards(currentCards, sourceTitle.value.trim() || 'AI Quest');
+            aiStatus.textContent = 'Flashcards saved for spaced repetition.';
+            aiStatus.className = 'status-line';
         });
 
         document.getElementById('saveOutputBtn').addEventListener('click', () => {

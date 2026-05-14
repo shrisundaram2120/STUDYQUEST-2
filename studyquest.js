@@ -9,6 +9,11 @@ const StudyQuest = (() => {
         timetablePlans: "studyquest.timetablePlans",
         resourceBookmarks: "studyquest.resourceBookmarks",
         aiDraft: "studyquest.aiDraft",
+        flashcards: "studyquest.flashcards",
+        exams: "studyquest.exams",
+        notificationSettings: "studyquest.notificationSettings",
+        cloudConfig: "studyquest.cloudConfig",
+        cloudSession: "studyquest.cloudSession",
         settings: "studyquest.settings"
     };
 
@@ -16,7 +21,15 @@ const StudyQuest = (() => {
         theme: "expedition",
         focusMinutes: 25,
         breakMinutes: 5,
-        dailyFocusGoal: 90
+        dailyFocusGoal: 90,
+        aiEndpoint: "/api/ai"
+    };
+
+    const defaultNotificationSettings = {
+        enabled: false,
+        taskReminders: true,
+        scheduleReminders: true,
+        streakReminderHour: "19:00"
     };
 
     const quotes = [
@@ -194,6 +207,252 @@ const StudyQuest = (() => {
 
     function clearAiDraft() {
         localStorage.removeItem(storageKeys.aiDraft);
+    }
+
+    function getFlashcards() {
+        return read(storageKeys.flashcards, []);
+    }
+
+    function saveFlashcards(cards) {
+        write(storageKeys.flashcards, cards);
+    }
+
+    function addFlashcards(cards, deck = "General") {
+        const existing = getFlashcards();
+        const now = new Date().toISOString();
+        const nextCards = cards.map((card) => ({
+            id: card.id || newId(),
+            deck: card.deck || deck,
+            front: card.front,
+            back: card.back,
+            source: card.source || "AI Quest",
+            dueAt: card.dueAt || now,
+            intervalDays: Number(card.intervalDays || 0),
+            ease: Number(card.ease || 2.5),
+            reviews: Number(card.reviews || 0),
+            lapses: Number(card.lapses || 0),
+            createdAt: card.createdAt || now,
+            updatedAt: now
+        }));
+        saveFlashcards([...nextCards, ...existing]);
+        return nextCards;
+    }
+
+    function getDueFlashcards(date = new Date()) {
+        return getFlashcards()
+            .filter((card) => new Date(card.dueAt || 0) <= date)
+            .sort((a, b) => String(a.dueAt || "").localeCompare(String(b.dueAt || "")));
+    }
+
+    function reviewFlashcard(cardId, rating) {
+        const now = new Date();
+        const cards = getFlashcards();
+        let reviewed = null;
+        const nextCards = cards.map((card) => {
+            if (card.id !== cardId) {
+                return card;
+            }
+
+            const oldEase = Number(card.ease || 2.5);
+            const oldInterval = Number(card.intervalDays || 0);
+            const reviews = Number(card.reviews || 0) + 1;
+            const ratingMap = {
+                again: { easeDelta: -0.25, interval: 0, lapses: 1 },
+                hard: { easeDelta: -0.12, interval: Math.max(1, Math.ceil(oldInterval * 1.2)) },
+                good: { easeDelta: 0, interval: oldInterval < 1 ? 1 : Math.ceil(oldInterval * oldEase) },
+                easy: { easeDelta: 0.18, interval: oldInterval < 1 ? 3 : Math.ceil(oldInterval * (oldEase + 0.45)) }
+            };
+            const update = ratingMap[rating] || ratingMap.good;
+            const ease = Math.max(1.3, Number((oldEase + update.easeDelta).toFixed(2)));
+            const intervalDays = Math.max(0, update.interval);
+            const due = new Date(now);
+            due.setDate(due.getDate() + intervalDays);
+
+            reviewed = {
+                ...card,
+                ease,
+                intervalDays,
+                reviews,
+                lapses: Number(card.lapses || 0) + Number(update.lapses || 0),
+                dueAt: due.toISOString(),
+                updatedAt: now.toISOString()
+            };
+            return reviewed;
+        });
+        saveFlashcards(nextCards);
+        return reviewed;
+    }
+
+    function getFlashcardStats() {
+        const cards = getFlashcards();
+        const due = getDueFlashcards();
+        const mastered = cards.filter((card) => Number(card.intervalDays || 0) >= 14).length;
+        const decks = Array.from(new Set(cards.map((card) => card.deck || "General")));
+        return {
+            total: cards.length,
+            due: due.length,
+            mastered,
+            decks
+        };
+    }
+
+    function getExams() {
+        return read(storageKeys.exams, []);
+    }
+
+    function saveExams(exams) {
+        write(storageKeys.exams, exams);
+    }
+
+    function addExam(exam) {
+        const exams = getExams();
+        const next = {
+            id: newId(),
+            title: exam.title,
+            subject: exam.subject || "General",
+            date: exam.date,
+            targetScore: clampNumber(exam.targetScore, 1, 100, 80),
+            topics: exam.topics || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        exams.unshift(next);
+        saveExams(exams);
+        return next;
+    }
+
+    function getExamStats() {
+        const exams = getExams();
+        const upcoming = exams
+            .filter((exam) => daysUntil(exam.date) !== null && daysUntil(exam.date) >= 0)
+            .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        const weakestTopics = exams
+            .flatMap((exam) => (exam.topics || []).map((topic) => ({ ...topic, examTitle: exam.title, examDate: exam.date })))
+            .sort((a, b) => Number(a.confidence || 0) - Number(b.confidence || 0))
+            .slice(0, 6);
+        return { exams, upcoming, weakestTopics };
+    }
+
+    function buildExamRevisionPlan(exam) {
+        const diff = Math.max(1, daysUntil(exam.date) ?? 1);
+        const topics = (exam.topics || [])
+            .slice()
+            .sort((a, b) => {
+                const aScore = Number(a.confidence || 1) - Number(a.weight || 1);
+                const bScore = Number(b.confidence || 1) - Number(b.weight || 1);
+                return aScore - bScore;
+            });
+        const maxBlocks = Math.min(10, Math.max(3, diff));
+        return topics.slice(0, maxBlocks).map((topic, index) => ({
+            day: index + 1,
+            title: topic.name,
+            focus: Number(topic.confidence || 1) <= 2 ? "Learn and practice" : "Timed revision",
+            minutes: Number(topic.weight || 3) >= 4 ? 45 : 30
+        }));
+    }
+
+    function getNotificationSettings() {
+        return { ...defaultNotificationSettings, ...read(storageKeys.notificationSettings, {}) };
+    }
+
+    function saveNotificationSettings(settings) {
+        write(storageKeys.notificationSettings, { ...getNotificationSettings(), ...settings });
+    }
+
+    async function requestNotifications() {
+        if (!("Notification" in window)) {
+            return "unsupported";
+        }
+        if (Notification.permission === "granted") {
+            saveNotificationSettings({ enabled: true });
+            return "granted";
+        }
+        const permission = await Notification.requestPermission();
+        saveNotificationSettings({ enabled: permission === "granted" });
+        return permission;
+    }
+
+    function notify(title, body) {
+        const settings = getNotificationSettings();
+        if (!settings.enabled || !("Notification" in window) || Notification.permission !== "granted") {
+            return false;
+        }
+        if (navigator.serviceWorker?.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: "STUDYQUEST_NOTIFY", title, body });
+        } else {
+            new Notification(title, { body, icon: "studyquest-high-resolution-logo.png" });
+        }
+        return true;
+    }
+
+    function scheduleSessionNotifications() {
+        const settings = getNotificationSettings();
+        if (!settings.enabled) {
+            return 0;
+        }
+        const now = new Date();
+        const today = todayKey(now);
+        let count = 0;
+
+        if (settings.taskReminders) {
+            getTasks().filter((task) => !task.done && task.deadline === today).slice(0, 4).forEach((task, index) => {
+                window.setTimeout(() => notify("StudyQuest task due today", task.title), 5000 + index * 1200);
+                count += 1;
+            });
+        }
+
+        if (settings.scheduleReminders) {
+            getSchedule().forEach((row) => {
+                if (!row.time) return;
+                const target = new Date(`${today}T${row.time}:00`);
+                const delay = target - now;
+                if (delay > 0 && delay < 86400000) {
+                    window.setTimeout(() => notify("Study block starting", row.task), delay);
+                    count += 1;
+                }
+            });
+        }
+
+        if (settings.streakReminderHour) {
+            const hasFocusToday = getFocusLog().some((session) => session.date?.slice(0, 10) === today);
+            const target = new Date(`${today}T${settings.streakReminderHour}:00`);
+            const delay = target - now;
+            if (!hasFocusToday && Number.isFinite(delay) && delay > 0 && delay < 86400000) {
+                window.setTimeout(() => notify("Keep your StudyQuest streak", "A short focus session still counts today."), delay);
+                count += 1;
+            }
+        }
+
+        return count;
+    }
+
+    function getCloudConfig() {
+        return read(storageKeys.cloudConfig, {
+            provider: "firebase",
+            firebaseConfig: "",
+            supabaseUrl: "",
+            supabaseAnonKey: ""
+        });
+    }
+
+    function saveCloudConfig(config) {
+        write(storageKeys.cloudConfig, { ...getCloudConfig(), ...config });
+    }
+
+    function getCloudSession() {
+        return read(storageKeys.cloudSession, null);
+    }
+
+    function saveCloudSession(session) {
+        write(storageKeys.cloudSession, session);
+    }
+
+    function collectSyncPayload() {
+        return {
+            exportedAt: new Date().toISOString(),
+            version: 4,
+            data: Object.fromEntries(Object.values(storageKeys).map((key) => [key, read(key, null)]))
+        };
     }
 
     function formatClock(date = new Date()) {
@@ -539,12 +798,7 @@ const StudyQuest = (() => {
     }
 
     function exportData() {
-        const payload = {
-            exportedAt: new Date().toISOString(),
-            app: "StudyQuest",
-            version: 2,
-            data: Object.fromEntries(Object.values(storageKeys).map((key) => [key, read(key, null)]))
-        };
+        const payload = { app: "StudyQuest", ...collectSyncPayload() };
         downloadText(`studyquest-backup-${todayKey()}.json`, JSON.stringify(payload, null, 2), "application/json");
     }
 
@@ -579,8 +833,98 @@ const StudyQuest = (() => {
             storageKeys.focusLog,
             storageKeys.timetablePlans,
             storageKeys.resourceBookmarks,
-            storageKeys.aiDraft
+            storageKeys.aiDraft,
+            storageKeys.flashcards,
+            storageKeys.exams
         ].forEach((key) => localStorage.removeItem(key));
+    }
+
+    async function callAiTool(mode, text, options = {}) {
+        const endpoint = options.endpoint || getSettings().aiEndpoint || "/api/ai";
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mode,
+                text,
+                title: options.title || "",
+                profile: getProfile(),
+                output: options.output || "text"
+            })
+        });
+
+        if (!response.ok) {
+            const detail = await response.text();
+            throw new Error(detail || "AI request failed");
+        }
+
+        return response.json();
+    }
+
+    function getWeekFocusSeries(days = 7) {
+        const focusLog = getFocusLog();
+        return Array.from({ length: days }).map((_, index) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (days - index - 1));
+            const key = todayKey(date);
+            return {
+                key,
+                label: date.toLocaleDateString([], { weekday: "short" }),
+                minutes: focusLog
+                    .filter((row) => row.completedAt?.slice(0, 10) === key)
+                    .reduce((sum, row) => sum + Number(row.minutes || 0), 0)
+            };
+        });
+    }
+
+    function getTaskCompletionSeries(days = 14) {
+        const tasks = getTasks();
+        return Array.from({ length: days }).map((_, index) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (days - index - 1));
+            const key = todayKey(date);
+            return {
+                key,
+                label: date.getDate(),
+                completed: tasks.filter((task) => task.completedAt?.slice(0, 10) === key).length
+            };
+        });
+    }
+
+    function renderMiniBars(rows, valueKey = "minutes") {
+        const max = Math.max(1, ...rows.map((row) => Number(row[valueKey] || 0)));
+        return rows.map((row) => {
+            const percent = Math.round((Number(row[valueKey] || 0) / max) * 100);
+            return `
+                <div class="mini-bar" title="${escapeHTML(row.label)}: ${Number(row[valueKey] || 0)}">
+                    <span style="height:${percent}%"></span>
+                    <small>${escapeHTML(row.label)}</small>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function injectMobileNav() {
+        if (document.querySelector(".mobile-bottom-nav")) {
+            return;
+        }
+        const current = location.pathname.split("/").pop() || "index.html";
+        const links = [
+            ["home.html", "Home"],
+            ["tasks.html", "Tasks"],
+            ["notes.html", "Notes"],
+            ["flashcards.html", "Cards"],
+            ["exams.html", "Exams"]
+        ];
+        const nav = document.createElement("nav");
+        nav.className = "mobile-bottom-nav";
+        nav.setAttribute("aria-label", "Primary mobile navigation");
+        nav.innerHTML = links.map(([href, label]) => `
+            <a href="${href}" class="${current === href ? "active" : ""}">
+                <span>${escapeHTML(label)}</span>
+            </a>
+        `).join("");
+        document.body.appendChild(nav);
     }
 
     function resetAllData() {
@@ -607,6 +951,8 @@ const StudyQuest = (() => {
     function pageReady() {
         applyTheme();
         registerServiceWorker();
+        injectMobileNav();
+        scheduleSessionNotifications();
     }
 
     if (document.readyState === "loading") {
@@ -646,6 +992,27 @@ const StudyQuest = (() => {
         getAiDraft,
         saveAiDraft,
         clearAiDraft,
+        getFlashcards,
+        saveFlashcards,
+        addFlashcards,
+        getDueFlashcards,
+        reviewFlashcard,
+        getFlashcardStats,
+        getExams,
+        saveExams,
+        addExam,
+        getExamStats,
+        buildExamRevisionPlan,
+        getNotificationSettings,
+        saveNotificationSettings,
+        requestNotifications,
+        notify,
+        scheduleSessionNotifications,
+        getCloudConfig,
+        saveCloudConfig,
+        getCloudSession,
+        saveCloudSession,
+        collectSyncPayload,
         attachClock,
         attachSidebarToggle,
         attachEnterSubmit,
@@ -665,6 +1032,10 @@ const StudyQuest = (() => {
         generateFlashcards,
         generateQuiz,
         explainSimply,
+        callAiTool,
+        getWeekFocusSeries,
+        getTaskCompletionSeries,
+        renderMiniBars,
         createStudyPlanFromTasks,
         downloadText,
         exportData,
