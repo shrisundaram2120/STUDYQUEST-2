@@ -45,6 +45,7 @@ jobs:
           python -m py_compile studyquest_api.py
           python -c "import studyquest_api; print(studyquest_api.app.title)"
           python -m pip check
+          python scripts/api-smoke-test.py
 
       - name: Run Playwright tests
         run: npm test

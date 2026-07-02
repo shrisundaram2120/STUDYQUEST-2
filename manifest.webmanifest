@@ -50,6 +50,11 @@
       "description": "Open RPG learning progression"
     },
     {
+      "name": "Passport",
+      "url": "passport.html",
+      "description": "Open redacted credential passport"
+    },
+    {
       "name": "Exam Mode",
       "url": "exams.html",
       "description": "Open exam countdowns and revision plans"

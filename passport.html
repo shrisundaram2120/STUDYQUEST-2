@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Credential Passport</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('wallpapersden.com_ai-landscape-2023-digital-art_1952x1120.jpg'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Passport</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a class="active" href="passport.html">Passport</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Credential passport</h2>
+                    <p>Package verified StudyQuest execution metrics into a redacted, recruiter-readable profile.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="three-column">
+                <article class="card">
+                    <p class="eyebrow">League</p>
+                    <h3 style="margin-bottom: 8px;">Division</h3>
+                    <div class="focus-display" id="passportLeague">Bronze</div>
+                    <p class="muted" id="passportRank">0 rank points</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">Velocity</p>
+                    <h3 style="margin-bottom: 8px;">Focus/day</h3>
+                    <div class="focus-display" id="focusVelocity">0</div>
+                    <p class="muted">Average minutes across the last week.</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">Readiness</p>
+                    <h3 style="margin-bottom: 8px;">Credential state</h3>
+                    <div class="focus-display" id="credentialState">Build</div>
+                    <p class="muted">Diamond and Grandmaster unlock top-tier export.</p>
+                </article>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Profile</p>
+                            <h3 style="margin-bottom: 8px;">Redacted identity</h3>
+                        </div>
+                        <span class="pill" id="redactionState">Protected</span>
+                    </div>
+                    <div class="passport-profile" id="passportProfile"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Actions</p>
+                            <h3 style="margin-bottom: 8px;">Export and backend check</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <button class="btn btn-primary" id="downloadPassportBtn" type="button">Download markdown</button>
+                        <button class="btn btn-secondary" id="copyPassportBtn" type="button">Copy summary</button>
+                        <button class="btn btn-ghost" id="fetchBackendPassportBtn" type="button">Fetch backend passport</button>
+                        <div class="status-line" id="passportStatus"></div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Metrics</p>
+                            <h3 style="margin-bottom: 8px;">Verified execution</h3>
+                        </div>
+                    </div>
+                    <div class="passport-metrics" id="passportMetrics"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Subjects</p>
+                            <h3 style="margin-bottom: 8px;">Top signals</h3>
+                        </div>
+                    </div>
+                    <div class="list" id="passportSubjects"></div>
+                </article>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Recruiter text</p>
+                        <h3 style="margin-bottom: 8px;">Raw output logs</h3>
+                    </div>
+                </div>
+                <textarea class="textarea passport-output" id="passportOutput" readonly></textarea>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const status = document.getElementById('passportStatus');
+        let passport = StudyQuest.buildCredentialPassport();
+
+        function setStatus(message, type = 'success') {
+            status.textContent = message;
+            status.className = type === 'error' ? 'status-line error' : 'status-line';
+        }
+
+        function renderPassport() {
+            const metrics = passport.verifiedExecutionMetrics || {};
+            document.getElementById('passportLeague').textContent = passport.leagueDivision;
+            document.getElementById('passportRank').textContent = `${passport.rankPoints} rank points | ${passport.xpTotal} XP`;
+            document.getElementById('focusVelocity').textContent = metrics.focus_velocity_minutes_per_day || 0;
+            document.getElementById('credentialState').textContent = passport.credentialEligible ? 'Ready' : 'Build';
+            document.getElementById('passportProfile').innerHTML = `
+                <div class="list-item">
+                    <strong>${e(passport.displayName)}</strong>
+                    <div class="muted">${e(passport.className)} | ${e(passport.email)}</div>
+                    <div class="task-meta">
+                        <span class="pill">${e(passport.leagueDivision)}</span>
+                        <span class="pill">Level ${Number(passport.level || 1)}</span>
+                        <span class="pill">${passport.credentialEligible ? 'Top-tier eligible' : 'In progress'}</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('passportMetrics').innerHTML = Object.entries(metrics).map(([key, value]) => `
+                <div class="metric compact-metric">
+                    <strong>${e(value ?? 'NA')}</strong>
+                    <span class="muted">${e(key.replace(/_/g, ' '))}</span>
+                </div>
+            `).join('');
+            document.getElementById('passportSubjects').innerHTML = passport.topSubjects?.length ? passport.topSubjects.map((row) => `
+                <div class="list-item">
+                    <strong>${e(row.subject)}</strong>
+                    <div class="task-meta">
+                        <span class="pill">${Number(row.completion_rate || 0)}% complete</span>
+                        <span class="pill ${Number(row.pressure || 0) >= 70 ? 'danger' : 'warning'}">Pressure ${Number(row.pressure || 0)}</span>
+                        <span class="pill">${Number(row.focus_minutes || 0)} focus min</span>
+                    </div>
+                </div>
+            `).join('') : '<div class="empty">Add subjects, tasks, and focus sessions to build subject signals.</div>';
+            document.getElementById('passportOutput').value = StudyQuest.formatCredentialPassport(passport);
+        }
+
+        document.getElementById('downloadPassportBtn').addEventListener('click', () => {
+            StudyQuest.downloadText(`studyquest-passport-${StudyQuest.todayKey()}.md`, StudyQuest.formatCredentialPassport(passport), 'text/markdown');
+            setStatus('Markdown passport downloaded.');
+        });
+
+        document.getElementById('copyPassportBtn').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(StudyQuest.formatCredentialPassport(passport));
+                setStatus('Passport summary copied.');
+            } catch (error) {
+                setStatus('Could not copy automatically. Select the text and copy manually.', 'error');
+            }
+        });
+
+        document.getElementById('fetchBackendPassportBtn').addEventListener('click', async () => {
+            const session = StudyQuest.getCloudSession();
+            if (!session?.uid) {
+                setStatus('Log in with StudyQuest API sync before fetching backend passport.', 'error');
+                return;
+            }
+            try {
+                const backendPassport = await StudyQuest.fetchBackendPassport(session.uid);
+                passport = {
+                    ...passport,
+                    displayName: StudyQuest.redactSensitiveText(backendPassport.display_name || passport.displayName),
+                    leagueDivision: backendPassport.league_division || passport.leagueDivision,
+                    xpTotal: backendPassport.xp_total ?? passport.xpTotal,
+                    level: backendPassport.level ?? passport.level,
+                    rankPoints: backendPassport.rank_points ?? passport.rankPoints,
+                    credentialEligible: ['Diamond', 'Grandmaster'].includes(backendPassport.league_division),
+                    verifiedExecutionMetrics: {
+                        ...passport.verifiedExecutionMetrics,
+                        ...(backendPassport.verified_execution_metrics || {})
+                    },
+                    rawOutputTextLogs: (backendPassport.raw_output_text_logs || passport.rawOutputTextLogs || []).map(StudyQuest.redactSensitiveText)
+                };
+                renderPassport();
+                setStatus('Backend passport loaded.');
+            } catch (error) {
+                setStatus(error.message || 'Backend passport unavailable.', 'error');
+            }
+        });
+
+        renderPassport();
+    </script>
+</body>
+</html>

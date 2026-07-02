@@ -1,6 +1,6 @@
 # StudyQuest
 
-StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
+StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, redacted Credential Passport exports, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
 
 ## Run Locally
 
@@ -39,6 +39,8 @@ python -m uvicorn studyquest_api:app --host 0.0.0.0 --port 8000
 
 Use `video-quest.html` to load lessons from `/api/v1/video-lessons/{lesson_id}`, run 30-minute dungeon sprints, and submit milestone solutions to `/api/v1/quests/evaluate`.
 
+The repo also includes `Procfile`, `runtime.txt`, and `render.yaml` for deploying the single FastAPI app to a free Python host such as Render. Set the secrets from `.env.example`, then paste the deployed API URL into StudyQuest Settings.
+
 ## Cloud Sync
 
 StudyQuest supports three sync options from Settings:
@@ -53,6 +55,7 @@ Copy `.env.example` to `.env` for local backend configuration. Never commit real
 
 - `progress.html`: weekly focus graphs, task completion history, subject pressure heatmap, exam readiness, recommendations, and activity history.
 - `skill-tree.html`: RPG learning path with prerequisite node IDs, XP, badges, rank points, and league progression.
+- `passport.html`: redacted Credential Passport with verified execution metrics, subject signals, raw output logs, and markdown export.
 - `video-quest.html`: YouTube milestone hard-pause checkpoints with terminal/scratchpad evaluation panels.
 
 ## GitHub Pages
@@ -67,4 +70,4 @@ The backend cannot run on GitHub Pages because Pages is static hosting. Deploy `
 npm test
 ```
 
-The Playwright suite checks dashboard navigation, flashcard scheduling, exam planning, progress/skill pages, Video Quest, and the AI fallback path. GitHub Actions runs JavaScript syntax checks, Python compile/import checks, dependency checks, and Playwright.
+The Playwright suite checks dashboard navigation, flashcard scheduling, exam planning, progress/skill/passport pages, Video Quest, and the AI fallback path. GitHub Actions runs JavaScript syntax checks, Python compile/import checks, dependency checks, API smoke tests, and Playwright.

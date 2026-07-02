@@ -1051,6 +1051,28 @@ button {
     background: linear-gradient(180deg, rgba(45, 115, 90, 0.12), var(--panel-strong));
 }
 
+.passport-profile,
+.passport-metrics {
+    display: grid;
+    gap: 12px;
+}
+
+.passport-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compact-metric strong {
+    font-size: 1.25rem;
+    overflow-wrap: anywhere;
+}
+
+.passport-output {
+    min-height: 360px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.92rem;
+    white-space: pre;
+}
+
 .hidden {
     display: none !important;
 }
@@ -1066,7 +1088,8 @@ button {
 
     .metric-row,
     .stat-grid,
-    .skill-tree-grid {
+    .skill-tree-grid,
+    .passport-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -1249,7 +1272,8 @@ button {
 
     .heatmap-row,
     .skill-tree-grid,
-    .two-week-chart {
+    .two-week-chart,
+    .passport-metrics {
         grid-template-columns: 1fr;
     }
 

@@ -27,6 +27,7 @@ test("dashboard exposes the upgraded study surfaces", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Exam Mode" })).toBeVisible();
   await expect(page.locator('a[href="progress.html"]')).toHaveCount(2);
   await expect(page.locator('a[href="skill-tree.html"]')).toHaveCount(2);
+  await expect(page.locator('a[href="passport.html"]')).toHaveCount(2);
   await expect(page.locator("#weeklyFocusChart .mini-bar")).toHaveCount(7);
 });
 
@@ -118,4 +119,36 @@ test("Settings exposes first-party API sync controls", async ({ page }) => {
   await expect(page.getByPlaceholder("http://127.0.0.1:8000")).toBeVisible();
   await expect(page.locator("#syncProvider")).toHaveValue("studyquest-api");
   await expect(page.getByRole("button", { name: "Push data" })).toBeVisible();
+});
+
+test("Credential Passport renders redacted export text", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("studyquest.profile", JSON.stringify({
+      name: "Codex Student 9876 5432 1098",
+      className: "Class 10",
+      email: "student@example.com",
+      goal: "Score higher in science",
+      subjects: ["Science", "Math"],
+      studyStyle: "Short revision blocks",
+      createdAt: "2026-05-14T00:00:00.000Z"
+    }));
+    localStorage.setItem("studyquest.skillProgress", JSON.stringify({
+      unlockedNodeIds: ["focus-foundation", "note-alchemist"],
+      xpTotal: 320,
+      level: 3,
+      rankPoints: 180,
+      leagueDivision: "Silver",
+      badges: ["Focus Foundation", "Note Alchemist"]
+    }));
+    localStorage.setItem("studyquest.activityEvents", JSON.stringify([
+      { id: "event-1", type: "focus", label: "Called student@example.com after Science focus", createdAt: new Date().toISOString() }
+    ]));
+  });
+
+  await page.goto("/passport.html");
+  await expect(page.getByRole("heading", { name: "Credential passport" })).toBeVisible();
+  await expect(page.locator("#passportLeague")).toHaveText("Silver");
+  await expect(page.locator("#passportProfile")).toContainText("[Aadhaar_Redacted]");
+  await expect(page.locator("#passportOutput")).toHaveValue(/Email_Redacted/);
+  await expect(page.getByRole("button", { name: "Download markdown" })).toBeVisible();
 });

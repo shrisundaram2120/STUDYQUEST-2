@@ -1245,6 +1245,130 @@ const StudyQuest = (() => {
         return recommendations.slice(0, 5);
     }
 
+    function redactSensitiveText(value) {
+        return String(value || "")
+            .replace(/\b\d{4}\s?\d{4}\s?\d{4}\b/g, "[Aadhaar_Redacted]")
+            .replace(/\b[A-Z]{5}\d{4}[A-Z]\b/g, "[ID_Placeholder]")
+            .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[Email_Redacted]")
+            .replace(/\b(?:\+?91[-\s]?)?[6-9]\d{9}\b/g, "[Phone_Redacted]");
+    }
+
+    function buildCredentialPassport() {
+        const profile = getProfile() || {};
+        const progress = getSkillProgress();
+        const analytics = getAnalytics();
+        const focusSeries = getWeekFocusSeries();
+        const flashcards = getFlashcardStats();
+        const heatmap = getSubjectHeatmap();
+        const exams = getExamReadiness();
+        const recentEvents = getActivityEvents().slice(0, 10);
+        const weekAverage = Math.round(focusSeries.reduce((sum, row) => sum + Number(row.minutes || 0), 0) / Math.max(1, focusSeries.length));
+        const topSubjects = heatmap.slice(0, 4).map((row) => ({
+            subject: row.subject,
+            completion_rate: row.rate,
+            pressure: row.pressure,
+            focus_minutes: row.focusMinutes
+        }));
+
+        return {
+            generatedAt: new Date().toISOString(),
+            displayName: redactSensitiveText(profile.name || "StudyQuest Learner"),
+            className: redactSensitiveText(profile.className || "Learner"),
+            email: "[Email_Redacted]",
+            leagueDivision: progress.leagueDivision,
+            level: progress.level,
+            xpTotal: progress.xpTotal,
+            rankPoints: progress.rankPoints,
+            credentialEligible: ["Diamond", "Grandmaster"].includes(progress.leagueDivision),
+            verifiedExecutionMetrics: {
+                focus_velocity_minutes_per_day: weekAverage,
+                focus_minutes_today: analytics.todayFocusMinutes,
+                focus_minutes_this_week: analytics.weekFocusMinutes,
+                clear_streaks: analytics.streakDays,
+                task_completion_rate: analytics.completionRate,
+                open_tasks: analytics.openTasks.length,
+                overdue_tasks: analytics.overdueTasks.length,
+                flashcards_total: flashcards.total,
+                flashcards_due: flashcards.due,
+                flashcards_mastered: flashcards.mastered,
+                unlocked_skill_nodes: progress.unlockedNodeIds.length,
+                badges: progress.badges.length,
+                next_exam_readiness: exams[0]?.readiness ?? null
+            },
+            topSubjects,
+            badges: progress.badges.map(redactSensitiveText),
+            rawOutputTextLogs: recentEvents.map((event) => redactSensitiveText(`${event.createdAt} | ${event.type} | ${event.label}`)),
+            sensitiveIdentifiers: {
+                aadhaar: "[Aadhaar_Redacted]",
+                government_id: "[ID_Placeholder]",
+                email: "[Email_Redacted]",
+                phone: "[Phone_Redacted]"
+            }
+        };
+    }
+
+    function formatCredentialPassport(passport = buildCredentialPassport()) {
+        const metrics = Object.entries(passport.verifiedExecutionMetrics || {})
+            .map(([key, value]) => `- ${key}: ${value ?? "not available"}`)
+            .join("\n");
+        const subjects = (passport.topSubjects || [])
+            .map((row) => `- ${row.subject}: ${row.completion_rate}% complete, pressure ${row.pressure}, ${row.focus_minutes} focus minutes`)
+            .join("\n") || "- No subject metrics yet";
+        const logs = (passport.rawOutputTextLogs || []).map((row) => `- ${row}`).join("\n") || "- No activity logs yet";
+
+        return [
+            "# StudyQuest Credential Passport",
+            "",
+            `Generated: ${passport.generatedAt}`,
+            `Learner: ${passport.displayName}`,
+            `Class: ${passport.className}`,
+            `League: ${passport.leagueDivision}`,
+            `Level: ${passport.level}`,
+            `XP: ${passport.xpTotal}`,
+            `Rank Points: ${passport.rankPoints}`,
+            `Credential Eligible: ${passport.credentialEligible ? "Yes" : "Not yet"}`,
+            "",
+            "## Verified Execution Metrics",
+            metrics,
+            "",
+            "## Subject Signals",
+            subjects,
+            "",
+            "## Badges",
+            (passport.badges || []).map((badge) => `- ${badge}`).join("\n") || "- No badges yet",
+            "",
+            "## Raw Output Text Logs",
+            logs,
+            "",
+            "## Sensitive Identifier Policy",
+            "- Aadhaar: [Aadhaar_Redacted]",
+            "- Government ID: [ID_Placeholder]",
+            "- Email: [Email_Redacted]",
+            "- Phone: [Phone_Redacted]"
+        ].join("\n");
+    }
+
+    async function fetchBackendPassport(userId) {
+        const session = getCloudSession();
+        const headers = session?.token ? { Authorization: `Bearer ${session.token}` } : {};
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 6000);
+        try {
+            const response = await fetch(`${getApiEndpoint()}/api/v1/passports/${encodeURIComponent(userId)}`, {
+                headers,
+                signal: controller.signal
+            });
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : {};
+            if (!response.ok) {
+                throw new Error(data.detail || "Backend passport unavailable.");
+            }
+            return data;
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
+    }
+
     function renderMiniBars(rows, valueKey = "minutes") {
         const max = Math.max(1, ...rows.map((row) => Number(row[valueKey] || 0)));
         return rows.map((row) => {
@@ -1268,7 +1392,7 @@ const StudyQuest = (() => {
             ["tasks.html", "Tasks"],
             ["flashcards.html", "Cards"],
             ["skill-tree.html", "Skills"],
-            ["video-quest.html", "Video"],
+            ["passport.html", "Pass"],
             ["progress.html", "Progress"]
         ];
         const nav = document.createElement("nav");
@@ -1411,6 +1535,10 @@ const StudyQuest = (() => {
         getSubjectHeatmap,
         getExamReadiness,
         getProgressRecommendations,
+        redactSensitiveText,
+        buildCredentialPassport,
+        formatCredentialPassport,
+        fetchBackendPassport,
         renderMiniBars,
         createStudyPlanFromTasks,
         downloadText,
