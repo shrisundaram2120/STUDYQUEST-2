@@ -75,14 +75,13 @@ function instructionForMode(mode, output) {
 }
 
 async function handleAi(req, res) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-        send(res, 503, JSON.stringify({ error: "OPENAI_API_KEY is not configured on this local server." }), "application/json; charset=utf-8");
-        return;
-    }
-
     try {
         const payload = await readJson(req);
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+            send(res, 503, JSON.stringify({ error: "OPENAI_API_KEY is not configured on this local server." }), "application/json; charset=utf-8");
+            return;
+        }
         const mode = payload.mode || "summary";
         const instruction = instructionForMode(mode, payload.output);
         const response = await fetch("https://api.openai.com/v1/responses", {

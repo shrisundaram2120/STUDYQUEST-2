@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Video Quest</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('HD-wallpaper-beautiful-landscape-digital-art.jpg'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Video Quest</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a class="active" href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Video Quest</h2>
+                    <p>Turn lessons into time-attack checkpoints that pause the video, test mastery, and unlock the next segment only after a clear.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="card">
+                <div class="video-quest-controls">
+                    <input class="field" id="apiBase" type="text" placeholder="FastAPI base URL" value="http://127.0.0.1:8000">
+                    <input class="field" id="lessonId" type="text" placeholder="Lesson ID" value="sample-video-quest">
+                    <input class="field" id="videoId" type="text" placeholder="YouTube video ID">
+                    <button class="btn btn-primary" id="loadLessonBtn" type="button">Load lesson</button>
+                    <button class="btn btn-secondary" id="startSprintBtn" type="button">Start 30-min sprint</button>
+                </div>
+                <div class="status-line" id="questStatus">Load a lesson to arm milestone intercepts.</div>
+            </section>
+
+            <section class="video-quest-grid">
+                <article class="card quest-video-pane">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Lesson arena</p>
+                            <h3 id="lessonTitle" style="margin-bottom: 8px;">No lesson loaded</h3>
+                        </div>
+                        <span class="pill" id="sprintClock">Sprint idle</span>
+                    </div>
+                    <div class="video-frame">
+                        <div id="player"></div>
+                    </div>
+                    <div class="milestone-track" id="milestoneTrack"></div>
+                </article>
+
+                <aside class="quest-evaluation-panel" id="evaluationPanel" aria-live="polite">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Checkpoint</p>
+                            <h3 id="milestoneTitle" style="margin-bottom: 8px;">Waiting for milestone</h3>
+                            <p class="muted" id="milestonePrompt">The panel opens when the player crosses a required timestamp.</p>
+                        </div>
+                        <span class="pill danger" id="lockState">Locked</span>
+                    </div>
+
+                    <div class="tab-row" role="tablist" aria-label="Evaluation mode">
+                        <button class="btn btn-secondary active" id="terminalTab" type="button" role="tab">Terminal</button>
+                        <button class="btn btn-ghost" id="scratchpadTab" type="button" role="tab">Scratchpad</button>
+                    </div>
+
+                    <div class="quest-terminal" id="terminalPane">
+                        <div class="terminal-output" id="terminalOutput">studyquest@dungeon:~$ Explain your approach, then submit.</div>
+                        <textarea class="textarea short" id="terminalInput" placeholder="Write pseudocode, code reasoning, or command notes here..."></textarea>
+                    </div>
+
+                    <div class="quest-scratchpad hidden" id="scratchpadPane">
+                        <textarea class="textarea" id="scratchpadInput" placeholder="Write your concept explanation, proof, or worked answer here..."></textarea>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-primary" id="submitEvaluationBtn" type="button">Submit checkpoint</button>
+                        <button class="btn btn-ghost" id="resumeAfterPassBtn" type="button" disabled>Resume video</button>
+                    </div>
+                    <div class="list" id="evaluationFeedback"></div>
+                </aside>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const profile = StudyQuest.getProfile() || {};
+        const state = {
+            player: null,
+            lesson: null,
+            milestones: [],
+            activeMilestoneIndex: -1,
+            passedMilestones: new Set(),
+            maxUnlockedSeconds: 0,
+            sprintId: null,
+            sprintExpiresAt: null,
+            checkTimer: null,
+            lockActive: false,
+            panelMode: 'scratchpad'
+        };
+
+        const questStatus = document.getElementById('questStatus');
+        const milestoneTrack = document.getElementById('milestoneTrack');
+        const evaluationPanel = document.getElementById('evaluationPanel');
+        const terminalInput = document.getElementById('terminalInput');
+        const scratchpadInput = document.getElementById('scratchpadInput');
+        const feedback = document.getElementById('evaluationFeedback');
+        const sprintClock = document.getElementById('sprintClock');
+
+        const fallbackLesson = {
+            lesson_id: 'sample-video-quest',
+            video_id: 'M7lc1UVf-VE',
+            title: 'Sample Time-Attack Video Quest',
+            default_panel: 'terminal',
+            milestones: [
+                {
+                    timestamp_seconds: 15,
+                    prompt: 'Explain the first concept in your own words.',
+                    mode: 'scratchpad',
+                    expected_concepts: ['concept', 'evidence', 'reasoning'],
+                    xp_reward: 50,
+                    rank_reward: 10
+                },
+                {
+                    timestamp_seconds: 45,
+                    prompt: 'Write pseudocode that captures the idea.',
+                    mode: 'terminal',
+                    expected_concepts: ['input', 'output', 'edge case'],
+                    xp_reward: 60,
+                    rank_reward: 12
+                }
+            ]
+        };
+
+        window.onYouTubeIframeAPIReady = () => {
+            state.player = new YT.Player('player', {
+                videoId: fallbackLesson.video_id,
+                playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+                events: {
+                    onReady: () => {
+                        questStatus.textContent = 'YouTube player ready. Load a lesson to begin.';
+                    },
+                    onStateChange: handlePlayerState
+                }
+            });
+        };
+
+        function apiBase() {
+            return document.getElementById('apiBase').value.replace(/\/$/, '');
+        }
+
+        function userId() {
+            return profile.email || profile.name || 'local-studyquest-user';
+        }
+
+        async function loadLesson() {
+            const lessonId = document.getElementById('lessonId').value.trim() || 'sample-video-quest';
+            try {
+                const response = await fetch(`${apiBase()}/api/v1/video-lessons/${encodeURIComponent(lessonId)}`);
+                if (!response.ok) throw new Error('Backend lesson unavailable');
+                state.lesson = await response.json();
+                questStatus.textContent = 'Lesson loaded from FastAPI.';
+            } catch (error) {
+                state.lesson = { ...fallbackLesson, lesson_id: lessonId };
+                questStatus.textContent = 'Using local fallback lesson until FastAPI is running.';
+            }
+
+            document.getElementById('lessonTitle').textContent = state.lesson.title;
+            document.getElementById('videoId').value = state.lesson.video_id;
+            state.milestones = [...state.lesson.milestones].sort((a, b) => a.timestamp_seconds - b.timestamp_seconds);
+            state.passedMilestones = new Set();
+            state.activeMilestoneIndex = -1;
+            state.maxUnlockedSeconds = state.milestones[0]?.timestamp_seconds || 0;
+            renderMilestones();
+            setPanelMode(state.lesson.default_panel || state.milestones[0]?.mode || 'scratchpad');
+            if (state.player?.loadVideoById) {
+                state.player.loadVideoById(state.lesson.video_id);
+                state.player.pauseVideo();
+            }
+        }
+
+        function renderMilestones() {
+            if (!state.milestones.length) {
+                milestoneTrack.innerHTML = '<div class="empty">No checkpoints configured.</div>';
+                return;
+            }
+            milestoneTrack.innerHTML = state.milestones.map((milestone, index) => {
+                const passed = state.passedMilestones.has(index);
+                const active = index === state.activeMilestoneIndex;
+                return `
+                    <div class="milestone-chip ${passed ? 'complete' : ''} ${active ? 'active' : ''}">
+                        <strong>${index + 1}</strong>
+                        <span>${formatTime(milestone.timestamp_seconds)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handlePlayerState(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                startMilestoneMonitor();
+            }
+        }
+
+        function startMilestoneMonitor() {
+            window.clearInterval(state.checkTimer);
+            state.checkTimer = window.setInterval(() => {
+                if (!state.player?.getCurrentTime) return;
+                const current = state.player.getCurrentTime();
+                lockSeeking(current);
+                const nextIndex = state.milestones.findIndex((milestone, index) => {
+                    return !state.passedMilestones.has(index) && current >= milestone.timestamp_seconds;
+                });
+                if (nextIndex >= 0) {
+                    triggerMilestone(nextIndex);
+                }
+            }, 450);
+        }
+
+        function lockSeeking(current) {
+            if (!state.lockActive && state.maxUnlockedSeconds && current > state.maxUnlockedSeconds + 1.2) {
+                state.player.seekTo(state.maxUnlockedSeconds, true);
+                questStatus.textContent = 'Checkpoint locked forward seeking until you clear the evaluation.';
+            }
+        }
+
+        function triggerMilestone(index) {
+            const milestone = state.milestones[index];
+            state.activeMilestoneIndex = index;
+            state.lockActive = true;
+            state.maxUnlockedSeconds = milestone.timestamp_seconds;
+            state.player.pauseVideo();
+            state.player.seekTo(milestone.timestamp_seconds, true);
+            evaluationPanel.classList.add('open');
+            document.getElementById('milestoneTitle').textContent = `Checkpoint ${index + 1} at ${formatTime(milestone.timestamp_seconds)}`;
+            document.getElementById('milestonePrompt').textContent = milestone.prompt;
+            document.getElementById('lockState').textContent = 'Hard paused';
+            document.getElementById('resumeAfterPassBtn').disabled = true;
+            feedback.innerHTML = '';
+            terminalInput.value = '';
+            scratchpadInput.value = '';
+            setPanelMode(milestone.mode || state.lesson.default_panel || 'scratchpad');
+            renderMilestones();
+        }
+
+        function setPanelMode(mode) {
+            state.panelMode = mode === 'terminal' ? 'terminal' : 'scratchpad';
+            document.getElementById('terminalPane').classList.toggle('hidden', state.panelMode !== 'terminal');
+            document.getElementById('scratchpadPane').classList.toggle('hidden', state.panelMode !== 'scratchpad');
+            document.getElementById('terminalTab').className = state.panelMode === 'terminal' ? 'btn btn-secondary active' : 'btn btn-ghost';
+            document.getElementById('scratchpadTab').className = state.panelMode === 'scratchpad' ? 'btn btn-secondary active' : 'btn btn-ghost';
+        }
+
+        async function startSprint() {
+            const payload = { party_id: `studyquest-${Date.now()}`, user_ids: [userId()], duration_minutes: 30 };
+            try {
+                const response = await fetch(`${apiBase()}/api/v1/sprints/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Sprint backend unavailable');
+                const data = await response.json();
+                state.sprintId = data.sprint_id;
+                state.sprintExpiresAt = new Date(data.expires_at);
+                questStatus.textContent = 'Time-Attack Dungeon Sprint started.';
+                tickSprintClock();
+            } catch (error) {
+                state.sprintId = `local-${Date.now()}`;
+                state.sprintExpiresAt = new Date(Date.now() + 30 * 60000);
+                questStatus.textContent = 'Local sprint clock started until FastAPI is connected.';
+                tickSprintClock();
+            }
+        }
+
+        function tickSprintClock() {
+            window.clearInterval(state.sprintTimer);
+            state.sprintTimer = window.setInterval(() => {
+                const remaining = Math.max(0, Math.floor((state.sprintExpiresAt - new Date()) / 1000));
+                sprintClock.textContent = remaining ? `Sprint ${formatTime(remaining)}` : 'Sprint ended';
+                if (!remaining) window.clearInterval(state.sprintTimer);
+            }, 1000);
+        }
+
+        async function submitEvaluation() {
+            if (state.activeMilestoneIndex < 0) {
+                return;
+            }
+            const milestone = state.milestones[state.activeMilestoneIndex];
+            const solution = state.panelMode === 'terminal' ? terminalInput.value.trim() : scratchpadInput.value.trim();
+            if (!solution) {
+                renderFeedback(false, ['Write an answer before submitting.'], []);
+                return;
+            }
+            const payload = {
+                user_id: userId(),
+                video_id: state.lesson.video_id,
+                milestone_timestamp: milestone.timestamp_seconds,
+                solution_text: solution,
+                lesson_config: milestone,
+                sprint_id: state.sprintId
+            };
+            try {
+                const response = await fetch(`${apiBase()}/api/v1/quests/evaluate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Evaluation backend unavailable');
+                const result = await response.json();
+                renderFeedback(result.passed, result.hints || [], result.socratic_questions || [], result);
+                if (result.passed) unlockCurrentMilestone();
+            } catch (error) {
+                const enough = solution.split(/\s+/).length >= 20;
+                renderFeedback(enough, ['FastAPI is offline, so local validation checked answer depth only.'], [
+                    'Can you connect this answer to the exact lesson moment?',
+                    'What edge case would prove your answer is robust?'
+                ]);
+                if (enough) unlockCurrentMilestone();
+            }
+        }
+
+        function unlockCurrentMilestone() {
+            state.passedMilestones.add(state.activeMilestoneIndex);
+            state.lockActive = false;
+            const next = state.milestones.find((_, index) => !state.passedMilestones.has(index));
+            state.maxUnlockedSeconds = next?.timestamp_seconds || Number.POSITIVE_INFINITY;
+            document.getElementById('lockState').textContent = 'Cleared';
+            document.getElementById('resumeAfterPassBtn').disabled = false;
+            renderMilestones();
+        }
+
+        function renderFeedback(passed, hints, questions, result = {}) {
+            feedback.innerHTML = `
+                <div class="list-item">
+                    <strong>${passed ? 'Checkpoint cleared' : 'Keep thinking'}</strong>
+                    <div class="muted">${e(result.source || 'local')}</div>
+                </div>
+                ${hints.map((hint) => `<div class="list-item">${e(hint)}</div>`).join('')}
+                ${questions.map((question) => `<div class="list-item"><strong>Question:</strong> ${e(question)}</div>`).join('')}
+            `;
+        }
+
+        function resumeVideo() {
+            if (state.lockActive) return;
+            evaluationPanel.classList.remove('open');
+            if (state.player?.playVideo) state.player.playVideo();
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${String(secs).padStart(2, '0')}`;
+        }
+
+        document.getElementById('loadLessonBtn').addEventListener('click', loadLesson);
+        document.getElementById('startSprintBtn').addEventListener('click', startSprint);
+        document.getElementById('submitEvaluationBtn').addEventListener('click', submitEvaluation);
+        document.getElementById('resumeAfterPassBtn').addEventListener('click', resumeVideo);
+        document.getElementById('terminalTab').addEventListener('click', () => setPanelMode('terminal'));
+        document.getElementById('scratchpadTab').addEventListener('click', () => setPanelMode('scratchpad'));
+
+        window.setTimeout(loadLesson, 700);
+    </script>
+</body>
+</html>

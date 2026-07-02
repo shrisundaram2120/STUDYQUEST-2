@@ -1,8 +1,8 @@
-name: Deploy StudyQuest to GitHub Pages
+name: Deploy StudyQuest Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,26 +11,40 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare static artifact
+        run: |
+          mkdir _site
+          find . -maxdepth 1 -type f \( \
+            -name "*.html" -o \
+            -name "*.css" -o \
+            -name "*.js" -o \
+            -name "*.webmanifest" -o \
+            -name "*.png" -o \
+            -name "*.jpg" -o \
+            -name "*.jpeg" -o \
+            -name "*.webp" \
+          \) -exec cp {} _site/ \;
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload static site
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment

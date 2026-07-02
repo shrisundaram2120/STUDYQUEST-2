@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Progress</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('remembering-digital-art-landscape-4k_1540751311.jpg.webp'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Progress</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a class="active" href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Progress intelligence</h2>
+                    <p>Weekly trends, weak subjects, flashcard load, and exam readiness in one focused command view.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="three-column">
+                <article class="card">
+                    <p class="eyebrow">Focus</p>
+                    <h3 style="margin-bottom: 8px;">This week</h3>
+                    <div class="focus-display" id="weekFocus">0</div>
+                    <p class="muted">Minutes logged in the last seven days.</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">Task flow</p>
+                    <h3 style="margin-bottom: 8px;">Completion</h3>
+                    <div class="focus-display" id="completionRate">0%</div>
+                    <p class="muted">Completed tasks against the current board.</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">League</p>
+                    <h3 style="margin-bottom: 8px;">Rank state</h3>
+                    <div class="focus-display" id="leagueDivision">Bronze</div>
+                    <p class="muted" id="rankMeta">0 XP | Level 1</p>
+                </article>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Trend</p>
+                            <h3 style="margin-bottom: 8px;">Weekly focus graph</h3>
+                        </div>
+                    </div>
+                    <div class="mini-chart" id="focusChart"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Tasks</p>
+                            <h3 style="margin-bottom: 8px;">14-day completion history</h3>
+                        </div>
+                    </div>
+                    <div class="mini-chart two-week-chart" id="taskChart"></div>
+                </article>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Heatmap</p>
+                            <h3 style="margin-bottom: 8px;">Subject pressure</h3>
+                        </div>
+                    </div>
+                    <div class="heatmap-list" id="subjectHeatmap"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Exams</p>
+                            <h3 style="margin-bottom: 8px;">Readiness score</h3>
+                        </div>
+                    </div>
+                    <div class="list" id="examReadiness"></div>
+                </article>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Coach</p>
+                            <h3 style="margin-bottom: 8px;">Recommended next moves</h3>
+                        </div>
+                    </div>
+                    <div class="list" id="recommendations"></div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">History</p>
+                            <h3 style="margin-bottom: 8px;">Recent activity</h3>
+                        </div>
+                    </div>
+                    <div class="activity-list" id="activityEvents"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const analytics = StudyQuest.getAnalytics();
+        const progress = StudyQuest.getSkillProgress();
+
+        document.getElementById('weekFocus').textContent = analytics.weekFocusMinutes;
+        document.getElementById('completionRate').textContent = `${analytics.completionRate}%`;
+        document.getElementById('leagueDivision').textContent = progress.leagueDivision;
+        document.getElementById('rankMeta').textContent = `${progress.xpTotal} XP | Level ${progress.level}`;
+
+        document.getElementById('focusChart').innerHTML = StudyQuest.renderMiniBars(StudyQuest.getWeekFocusSeries(), 'minutes');
+        document.getElementById('taskChart').innerHTML = StudyQuest.renderMiniBars(StudyQuest.getTaskCompletionSeries(), 'completed');
+
+        const heatmap = StudyQuest.getSubjectHeatmap();
+        document.getElementById('subjectHeatmap').innerHTML = heatmap.length ? heatmap.map((row) => `
+            <div class="heatmap-row">
+                <div>
+                    <strong>${e(row.subject)}</strong>
+                    <div class="muted">${row.done}/${row.total || 0} tasks complete | ${row.focusMinutes} focus min</div>
+                </div>
+                <div class="heatmap-meter" aria-label="${e(row.subject)} pressure ${row.pressure}%">
+                    <span style="width:${row.pressure}%"></span>
+                </div>
+                <span class="pill ${row.pressure >= 70 ? 'danger' : row.pressure >= 45 ? 'warning' : 'success'}">${row.pressure}</span>
+            </div>
+        `).join('') : '<div class="empty">Add subjects and tasks to build a pressure heatmap.</div>';
+
+        const readiness = StudyQuest.getExamReadiness();
+        document.getElementById('examReadiness').innerHTML = readiness.length ? readiness.map((exam) => `
+            <div class="list-item">
+                <strong>${e(exam.title)}</strong>
+                <div class="task-meta">
+                    <span class="pill">${e(exam.subject || 'General')}</span>
+                    <span class="pill ${exam.days !== null && exam.days <= 7 ? 'danger' : ''}">${exam.days === null ? 'No date' : `${exam.days} days`}</span>
+                    <span class="pill ${exam.readiness < 60 ? 'danger' : exam.readiness < 80 ? 'warning' : 'success'}">${exam.readiness}% ready</span>
+                </div>
+                ${StudyQuest.renderProgressBar(exam.readiness)}
+            </div>
+        `).join('') : '<div class="empty">Add exams and syllabus topics to calculate readiness.</div>';
+
+        document.getElementById('recommendations').innerHTML = StudyQuest.getProgressRecommendations().map((item) => `
+            <div class="list-item">${e(item)}</div>
+        `).join('');
+
+        const events = StudyQuest.getActivityEvents().slice(0, 8);
+        document.getElementById('activityEvents').innerHTML = events.length ? events.map((event) => `
+            <div class="activity-row">
+                <div>
+                    <strong>${e(event.label)}</strong>
+                    <div class="muted">${e(event.type)} | ${new Date(event.createdAt).toLocaleString()}</div>
+                </div>
+            </div>
+        `).join('') : '<div class="empty">Complete a focus session or unlock a skill to start the activity log.</div>';
+    </script>
+</body>
+</html>

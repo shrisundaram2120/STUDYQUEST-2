@@ -11,6 +11,8 @@ const StudyQuest = (() => {
         aiDraft: "studyquest.aiDraft",
         flashcards: "studyquest.flashcards",
         exams: "studyquest.exams",
+        skillProgress: "studyquest.skillProgress",
+        activityEvents: "studyquest.activityEvents",
         notificationSettings: "studyquest.notificationSettings",
         cloudConfig: "studyquest.cloudConfig",
         cloudSession: "studyquest.cloudSession",
@@ -22,7 +24,8 @@ const StudyQuest = (() => {
         focusMinutes: 25,
         breakMinutes: 5,
         dailyFocusGoal: 90,
-        aiEndpoint: "/api/ai"
+        aiEndpoint: "/api/ai",
+        apiEndpoint: "http://127.0.0.1:8000"
     };
 
     const defaultNotificationSettings = {
@@ -53,6 +56,59 @@ const StudyQuest = (() => {
         calm: "Calm",
         midnight: "Midnight"
     };
+
+    const leagueDivisions = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Grandmaster"];
+
+    const defaultSkillNodes = [
+        {
+            node_id: "focus-foundation",
+            title: "Focus Foundation",
+            subject: "Study Skills",
+            xp_reward: 60,
+            prerequisite_node_ids: [],
+            description: "Complete your first focused session and learn the rhythm of deep work."
+        },
+        {
+            node_id: "note-alchemist",
+            title: "Note Alchemist",
+            subject: "Notes",
+            xp_reward: 80,
+            prerequisite_node_ids: ["focus-foundation"],
+            description: "Turn raw notes or OCR text into structured study material."
+        },
+        {
+            node_id: "recall-sprinter",
+            title: "Recall Sprinter",
+            subject: "Flashcards",
+            xp_reward: 90,
+            prerequisite_node_ids: ["focus-foundation"],
+            description: "Review flashcards with again, hard, good, and easy scheduling."
+        },
+        {
+            node_id: "exam-cartographer",
+            title: "Exam Cartographer",
+            subject: "Exam Mode",
+            xp_reward: 110,
+            prerequisite_node_ids: ["note-alchemist"],
+            description: "Map syllabus weak spots into a deadline-aware revision plan."
+        },
+        {
+            node_id: "video-guardian",
+            title: "Video Guardian",
+            subject: "Video Quest",
+            xp_reward: 120,
+            prerequisite_node_ids: ["recall-sprinter"],
+            description: "Clear a milestone checkpoint before the lesson continues."
+        },
+        {
+            node_id: "diamond-track",
+            title: "Diamond Track",
+            subject: "Credentials",
+            xp_reward: 160,
+            prerequisite_node_ids: ["exam-cartographer", "video-guardian"],
+            description: "Build enough verified activity for a recruiter-friendly passport."
+        }
+    ];
 
     function read(key, fallback) {
         try {
@@ -176,6 +232,8 @@ const StudyQuest = (() => {
             completedAt: new Date().toISOString()
         });
         saveFocusLog(rows.slice(0, 500));
+        logActivityEvent("focus", label, { minutes: safeMinutes, source });
+        awardProgress({ xp: safeMinutes, rank: Math.max(1, Math.floor(safeMinutes / 10)), reason: label });
     }
 
     function getTimetablePlans() {
@@ -327,10 +385,136 @@ const StudyQuest = (() => {
             .filter((exam) => daysUntil(exam.date) !== null && daysUntil(exam.date) >= 0)
             .sort((a, b) => String(a.date).localeCompare(String(b.date)));
         const weakestTopics = exams
-            .flatMap((exam) => (exam.topics || []).map((topic) => ({ ...topic, examTitle: exam.title, examDate: exam.date })))
+            .flatMap((exam) => (exam.topics || []).map((topic) => ({
+                ...topic,
+                examTitle: exam.title,
+                examDate: exam.date,
+                subject: exam.subject || "General"
+            })))
             .sort((a, b) => Number(a.confidence || 0) - Number(b.confidence || 0))
             .slice(0, 6);
         return { exams, upcoming, weakestTopics };
+    }
+
+    function getActivityEvents() {
+        return read(storageKeys.activityEvents, []);
+    }
+
+    function saveActivityEvents(events) {
+        write(storageKeys.activityEvents, events.slice(0, 500));
+    }
+
+    function logActivityEvent(type, label, meta = {}) {
+        const events = getActivityEvents();
+        events.unshift({
+            id: newId(),
+            type,
+            label,
+            meta,
+            createdAt: new Date().toISOString()
+        });
+        saveActivityEvents(events);
+    }
+
+    function getSkillNodes() {
+        return read("studyquest.skills", defaultSkillNodes);
+    }
+
+    function saveSkillNodes(nodes) {
+        write("studyquest.skills", nodes);
+    }
+
+    function getSkillProgress() {
+        const fallback = {
+            unlockedNodeIds: ["focus-foundation"],
+            xpTotal: 0,
+            level: 1,
+            rankPoints: 0,
+            leagueDivision: "Bronze",
+            badges: [],
+            updatedAt: new Date().toISOString()
+        };
+        const progress = { ...fallback, ...read(storageKeys.skillProgress, {}) };
+        progress.unlockedNodeIds = Array.from(new Set(progress.unlockedNodeIds || []));
+        progress.badges = Array.from(new Set(progress.badges || []));
+        progress.level = Math.max(1, Math.floor(Number(progress.level || 1)));
+        progress.xpTotal = Math.max(0, Math.floor(Number(progress.xpTotal || 0)));
+        progress.rankPoints = Math.max(0, Math.floor(Number(progress.rankPoints || 0)));
+        progress.leagueDivision = leagueForRank(progress.rankPoints);
+        return progress;
+    }
+
+    function saveSkillProgress(progress) {
+        const next = {
+            ...getSkillProgress(),
+            ...progress,
+            updatedAt: new Date().toISOString()
+        };
+        next.unlockedNodeIds = Array.from(new Set(next.unlockedNodeIds || []));
+        next.badges = Array.from(new Set(next.badges || []));
+        next.level = levelForXp(next.xpTotal);
+        next.leagueDivision = leagueForRank(next.rankPoints);
+        write(storageKeys.skillProgress, next);
+        return next;
+    }
+
+    function levelForXp(xpTotal) {
+        return Math.max(1, Math.floor(Math.sqrt(Math.max(0, Number(xpTotal || 0)) / 75)) + 1);
+    }
+
+    function leagueForRank(rankPoints) {
+        const rank = Math.max(0, Number(rankPoints || 0));
+        if (rank >= 2400) return "Grandmaster";
+        if (rank >= 1500) return "Diamond";
+        if (rank >= 900) return "Platinum";
+        if (rank >= 450) return "Gold";
+        if (rank >= 150) return "Silver";
+        return "Bronze";
+    }
+
+    function awardProgress({ xp = 0, rank = 0, badge = "", reason = "Study progress" } = {}) {
+        const progress = getSkillProgress();
+        const badges = badge ? [...progress.badges, badge] : progress.badges;
+        const next = saveSkillProgress({
+            ...progress,
+            xpTotal: progress.xpTotal + Math.max(0, Number(xp || 0)),
+            rankPoints: progress.rankPoints + Math.max(0, Number(rank || 0)),
+            badges
+        });
+        logActivityEvent("reward", reason, { xp, rank, badge, level: next.level, leagueDivision: next.leagueDivision });
+        return next;
+    }
+
+    function canUnlockSkill(node, unlockedNodeIds = getSkillProgress().unlockedNodeIds) {
+        const unlocked = new Set(unlockedNodeIds);
+        return (node.prerequisite_node_ids || []).every((id) => unlocked.has(id));
+    }
+
+    function unlockSkillNode(nodeId) {
+        const nodes = getSkillNodes();
+        const node = nodes.find((item) => item.node_id === nodeId);
+        if (!node) {
+            return { ok: false, message: "Skill node not found." };
+        }
+
+        const progress = getSkillProgress();
+        if (progress.unlockedNodeIds.includes(nodeId)) {
+            return { ok: true, alreadyUnlocked: true, progress, node };
+        }
+
+        if (!canUnlockSkill(node, progress.unlockedNodeIds)) {
+            return { ok: false, message: "Unlock the prerequisite skills first.", node };
+        }
+
+        const next = saveSkillProgress({
+            ...progress,
+            unlockedNodeIds: [...progress.unlockedNodeIds, nodeId],
+            xpTotal: progress.xpTotal + Number(node.xp_reward || 50),
+            rankPoints: progress.rankPoints + Math.max(5, Math.floor(Number(node.xp_reward || 50) / 5)),
+            badges: [...progress.badges, node.title]
+        });
+        logActivityEvent("skill", `Unlocked ${node.title}`, { nodeId, xp: node.xp_reward });
+        return { ok: true, progress: next, node };
     }
 
     function buildExamRevisionPlan(exam) {
@@ -414,7 +598,7 @@ const StudyQuest = (() => {
         }
 
         if (settings.streakReminderHour) {
-            const hasFocusToday = getFocusLog().some((session) => session.date?.slice(0, 10) === today);
+            const hasFocusToday = getFocusLog().some((session) => session.completedAt?.slice(0, 10) === today);
             const target = new Date(`${today}T${settings.streakReminderHour}:00`);
             const delay = target - now;
             if (!hasFocusToday && Number.isFinite(delay) && delay > 0 && delay < 86400000) {
@@ -428,7 +612,7 @@ const StudyQuest = (() => {
 
     function getCloudConfig() {
         return read(storageKeys.cloudConfig, {
-            provider: "firebase",
+            provider: "studyquest-api",
             firebaseConfig: "",
             supabaseUrl: "",
             supabaseAnonKey: ""
@@ -448,11 +632,103 @@ const StudyQuest = (() => {
     }
 
     function collectSyncPayload() {
+        const syncableKeys = Object.values(storageKeys).filter((key) => key !== storageKeys.cloudSession);
         return {
             exportedAt: new Date().toISOString(),
             version: 4,
-            data: Object.fromEntries(Object.values(storageKeys).map((key) => [key, read(key, null)]))
+            data: Object.fromEntries(syncableKeys.map((key) => [key, read(key, null)]))
         };
+    }
+
+    function getApiEndpoint() {
+        return String(getSettings().apiEndpoint || "http://127.0.0.1:8000").replace(/\/+$/, "");
+    }
+
+    async function apiRequest(path, { method = "GET", body = null, token = null, timeoutMs = 6000 } = {}) {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+        const headers = { "Content-Type": "application/json" };
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+
+        try {
+            const response = await fetch(`${getApiEndpoint()}${path}`, {
+                method,
+                headers,
+                signal: controller.signal,
+                body: body ? JSON.stringify(body) : null
+            });
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : {};
+            if (!response.ok) {
+                throw new Error(data.detail || data.error || "StudyQuest API request failed.");
+            }
+            return data;
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
+    }
+
+    function saveApiSession(session) {
+        saveCloudSession({
+            provider: "studyquest-api",
+            uid: session.user_id,
+            email: session.email,
+            token: session.access_token,
+            expiresAt: session.expires_at,
+            savedAt: new Date().toISOString()
+        });
+    }
+
+    async function signUpApiAccount(email, password, displayName = "") {
+        const data = await apiRequest("/api/v1/auth/signup", {
+            method: "POST",
+            body: { email, password, display_name: displayName || greetName() }
+        });
+        saveApiSession(data);
+        return data;
+    }
+
+    async function loginApiAccount(email, password) {
+        const data = await apiRequest("/api/v1/auth/login", {
+            method: "POST",
+            body: { email, password }
+        });
+        saveApiSession(data);
+        return data;
+    }
+
+    async function pushApiSync() {
+        const session = getCloudSession();
+        if (!session?.token) {
+            throw new Error("Log in to the StudyQuest API first.");
+        }
+        return apiRequest("/api/v1/sync/push", {
+            method: "POST",
+            token: session.token,
+            body: {
+                payload: collectSyncPayload(),
+                client_updated_at: new Date().toISOString()
+            }
+        });
+    }
+
+    async function pullApiSync() {
+        const session = getCloudSession();
+        if (!session?.token) {
+            throw new Error("Log in to the StudyQuest API first.");
+        }
+        const data = await apiRequest("/api/v1/sync/pull", { token: session.token });
+        if (!data.payload?.data) {
+            throw new Error("No StudyQuest API backup found.");
+        }
+        Object.entries(data.payload.data).forEach(([key, value]) => {
+            if (value !== null) {
+                write(key, value);
+            }
+        });
+        return data;
     }
 
     function formatClock(date = new Date()) {
@@ -841,24 +1117,33 @@ const StudyQuest = (() => {
 
     async function callAiTool(mode, text, options = {}) {
         const endpoint = options.endpoint || getSettings().aiEndpoint || "/api/ai";
-        const response = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                mode,
-                text,
-                title: options.title || "",
-                profile: getProfile(),
-                output: options.output || "text"
-            })
-        });
+        const timeoutMs = Number(options.timeoutMs || 3500);
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
-        if (!response.ok) {
-            const detail = await response.text();
-            throw new Error(detail || "AI request failed");
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    mode,
+                    text,
+                    title: options.title || "",
+                    profile: getProfile(),
+                    output: options.output || "text"
+                })
+            });
+
+            if (!response.ok) {
+                const detail = await response.text();
+                throw new Error(detail || "AI request failed");
+            }
+
+            return response.json();
+        } finally {
+            window.clearTimeout(timeoutId);
         }
-
-        return response.json();
     }
 
     function getWeekFocusSeries(days = 7) {
@@ -891,6 +1176,75 @@ const StudyQuest = (() => {
         });
     }
 
+    function getSubjectHeatmap() {
+        const subjects = getSubjectStats();
+        const focusLog = getFocusLog();
+        const tasks = getTasks();
+        const exams = getExamStats();
+
+        return subjects.map((subjectRow) => {
+            const subject = subjectRow.subject;
+            const subjectTasks = tasks.filter((task) => (task.subject || "General") === subject);
+            const weakTopics = exams.weakestTopics.filter((topic) => (topic.subject || "General") === subject);
+            const focusMinutes = focusLog
+                .filter((row) => String(row.label || "").toLowerCase().includes(subject.toLowerCase()))
+                .reduce((sum, row) => sum + Number(row.minutes || 0), 0);
+            const pressure = Math.min(100, Math.max(
+                0,
+                (100 - subjectRow.rate) + weakTopics.length * 12 + subjectTasks.filter((task) => isOverdue(task)).length * 16 - Math.min(35, focusMinutes / 3)
+            ));
+            return {
+                ...subjectRow,
+                focusMinutes,
+                weakTopics: weakTopics.length,
+                pressure: Math.round(pressure)
+            };
+        }).sort((a, b) => b.pressure - a.pressure || a.subject.localeCompare(b.subject));
+    }
+
+    function getExamReadiness() {
+        return getExams().map((exam) => {
+            const topics = exam.topics || [];
+            const confidence = topics.length
+                ? topics.reduce((sum, topic) => sum + Number(topic.confidence || 1), 0) / (topics.length * 5)
+                : 0.35;
+            const days = daysUntil(exam.date);
+            const urgencyPenalty = days === null ? 0.1 : Math.max(0, (14 - Math.min(14, Math.max(0, days))) / 30);
+            const readiness = Math.round(Math.max(0, Math.min(100, confidence * 100 - urgencyPenalty * 100)));
+            return {
+                ...exam,
+                days,
+                readiness
+            };
+        }).sort((a, b) => (a.days ?? 999) - (b.days ?? 999));
+    }
+
+    function getProgressRecommendations() {
+        const analytics = getAnalytics();
+        const flashcards = getFlashcardStats();
+        const heatmap = getSubjectHeatmap();
+        const exams = getExamReadiness();
+        const recommendations = [];
+
+        if (analytics.overdueTasks.length) {
+            recommendations.push(`Clear ${pluralize(Math.min(analytics.overdueTasks.length, 3), "overdue task")} before starting new work.`);
+        }
+        if (flashcards.due) {
+            recommendations.push(`Review ${pluralize(flashcards.due, "flashcard")} while recall is warm.`);
+        }
+        if (heatmap[0]?.pressure >= 60) {
+            recommendations.push(`Give ${heatmap[0].subject} a protected focus block; it has the highest pressure score.`);
+        }
+        if (exams[0] && exams[0].readiness < 70) {
+            recommendations.push(`Open Exam Mode for ${exams[0].title}; readiness is ${exams[0].readiness}%.`);
+        }
+        if (!recommendations.length) {
+            recommendations.push("Keep the streak alive with one short focus session and one flashcard review.");
+        }
+
+        return recommendations.slice(0, 5);
+    }
+
     function renderMiniBars(rows, valueKey = "minutes") {
         const max = Math.max(1, ...rows.map((row) => Number(row[valueKey] || 0)));
         return rows.map((row) => {
@@ -912,9 +1266,10 @@ const StudyQuest = (() => {
         const links = [
             ["home.html", "Home"],
             ["tasks.html", "Tasks"],
-            ["notes.html", "Notes"],
             ["flashcards.html", "Cards"],
-            ["exams.html", "Exams"]
+            ["skill-tree.html", "Skills"],
+            ["video-quest.html", "Video"],
+            ["progress.html", "Progress"]
         ];
         const nav = document.createElement("nav");
         nav.className = "mobile-bottom-nav";
@@ -1003,6 +1358,18 @@ const StudyQuest = (() => {
         addExam,
         getExamStats,
         buildExamRevisionPlan,
+        getActivityEvents,
+        saveActivityEvents,
+        logActivityEvent,
+        getSkillNodes,
+        saveSkillNodes,
+        getSkillProgress,
+        saveSkillProgress,
+        levelForXp,
+        leagueForRank,
+        awardProgress,
+        canUnlockSkill,
+        unlockSkillNode,
         getNotificationSettings,
         saveNotificationSettings,
         requestNotifications,
@@ -1013,6 +1380,12 @@ const StudyQuest = (() => {
         getCloudSession,
         saveCloudSession,
         collectSyncPayload,
+        getApiEndpoint,
+        apiRequest,
+        signUpApiAccount,
+        loginApiAccount,
+        pushApiSync,
+        pullApiSync,
         attachClock,
         attachSidebarToggle,
         attachEnterSubmit,
@@ -1035,6 +1408,9 @@ const StudyQuest = (() => {
         callAiTool,
         getWeekFocusSeries,
         getTaskCompletionSeries,
+        getSubjectHeatmap,
+        getExamReadiness,
+        getProgressRecommendations,
         renderMiniBars,
         createStudyPlanFromTasks,
         downloadText,

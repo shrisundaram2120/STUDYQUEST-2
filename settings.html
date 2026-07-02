@@ -26,8 +26,11 @@
                 <a href="ttgen.html">Timetable</a>
                 <a href="flashcards.html">Flashcards</a>
                 <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
                 <a href="source.html">Sources</a>
                 <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
                 <a href="ocr.html">Img-Text</a>
                 <a href="summarizer.html">Summarizer</a>
                 <a href="chat.html">Chat</a>
@@ -88,6 +91,7 @@
                     </div>
                     <div class="stack">
                         <input class="field" id="aiEndpoint" type="text" placeholder="/api/ai">
+                        <input class="field" id="apiEndpoint" type="text" placeholder="http://127.0.0.1:8000">
                         <p class="muted">Use a server endpoint so public GitHub Pages never exposes an API key.</p>
                         <button class="btn btn-primary" id="saveAiEndpointBtn" type="button">Save AI endpoint</button>
                         <div class="status-line" id="aiEndpointStatus"></div>
@@ -103,6 +107,7 @@
                     </div>
                     <div class="stack">
                         <select class="select" id="syncProvider">
+                            <option value="studyquest-api">StudyQuest API + MongoDB Atlas</option>
                             <option value="firebase">Firebase Auth + Firestore</option>
                             <option value="supabase">Supabase Auth + table</option>
                         </select>
@@ -215,9 +220,10 @@
         document.getElementById('breakMinutes').value = settings.breakMinutes;
         document.getElementById('dailyFocusGoal').value = settings.dailyFocusGoal;
         document.getElementById('aiEndpoint').value = settings.aiEndpoint || '/api/ai';
+        document.getElementById('apiEndpoint').value = settings.apiEndpoint || 'http://127.0.0.1:8000';
         const cloudConfig = StudyQuest.getCloudConfig();
         const notificationSettings = StudyQuest.getNotificationSettings();
-        document.getElementById('syncProvider').value = cloudConfig.provider || 'firebase';
+        document.getElementById('syncProvider').value = cloudConfig.provider || 'studyquest-api';
         document.getElementById('firebaseConfig').value = cloudConfig.firebaseConfig || '';
         document.getElementById('supabaseUrl').value = cloudConfig.supabaseUrl || '';
         document.getElementById('supabaseAnonKey').value = cloudConfig.supabaseAnonKey || '';
@@ -277,10 +283,11 @@
         document.getElementById('saveAiEndpointBtn').addEventListener('click', () => {
             settings = {
                 ...settings,
-                aiEndpoint: document.getElementById('aiEndpoint').value.trim() || '/api/ai'
+                aiEndpoint: document.getElementById('aiEndpoint').value.trim() || '/api/ai',
+                apiEndpoint: document.getElementById('apiEndpoint').value.trim() || 'http://127.0.0.1:8000'
             };
             StudyQuest.saveSettings(settings);
-            document.getElementById('aiEndpointStatus').textContent = 'AI endpoint saved.';
+            document.getElementById('aiEndpointStatus').textContent = 'Backend endpoints saved.';
         });
 
         document.getElementById('saveCloudConfigBtn').addEventListener('click', () => {
@@ -295,6 +302,9 @@
 
         async function getCloudClient() {
             const config = StudyQuest.getCloudConfig();
+            if (config.provider === 'studyquest-api') {
+                return { provider: 'studyquest-api' };
+            }
             if (config.provider === 'firebase') {
                 const firebaseConfig = JSON.parse(config.firebaseConfig || '{}');
                 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
@@ -320,6 +330,12 @@
                 throw new Error('Email and password are required.');
             }
             const cloud = await getCloudClient();
+            if (cloud.provider === 'studyquest-api') {
+                const result = kind === 'signup'
+                    ? await StudyQuest.signUpApiAccount(email, password, profile.name)
+                    : await StudyQuest.loginApiAccount(email, password);
+                return result.user_id;
+            }
             if (cloud.provider === 'firebase') {
                 const result = kind === 'signup'
                     ? await cloud.authMod.createUserWithEmailAndPassword(cloud.auth, email, password)
@@ -341,6 +357,10 @@
             if (!session?.uid) {
                 throw new Error('Log in before syncing.');
             }
+            if (cloud.provider === 'studyquest-api') {
+                await StudyQuest.pushApiSync();
+                return;
+            }
             const payload = StudyQuest.collectSyncPayload();
             if (cloud.provider === 'firebase') {
                 await cloud.storeMod.setDoc(cloud.storeMod.doc(cloud.db, 'studyquestSync', session.uid), payload);
@@ -355,6 +375,10 @@
             const session = StudyQuest.getCloudSession();
             if (!session?.uid) {
                 throw new Error('Log in before syncing.');
+            }
+            if (cloud.provider === 'studyquest-api') {
+                await StudyQuest.pullApiSync();
+                return;
             }
             let payload = null;
             if (cloud.provider === 'firebase') {

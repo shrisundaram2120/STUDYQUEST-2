@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Skill Tree</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body { --page-image: url('pngtree-great-outdoors-digital-painting-4k-landscape-of-nature-with-trees-mountains-image_15699422.jpg'); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy"><h1>StudyQuest</h1><p>Skill Tree</p></div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a class="active" href="skill-tree.html">Skill Tree</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>RPG skill tree</h2>
+                    <p>Unlock learning abilities through prerequisites, XP, league rank, and verified study actions.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="three-column">
+                <article class="card">
+                    <p class="eyebrow">Level</p>
+                    <h3 style="margin-bottom: 8px;">Learner level</h3>
+                    <div class="focus-display" id="levelCount">1</div>
+                    <p class="muted" id="xpCount">0 XP earned</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">League</p>
+                    <h3 style="margin-bottom: 8px;">Division</h3>
+                    <div class="focus-display" id="divisionName">Bronze</div>
+                    <p class="muted" id="rankCount">0 rank points</p>
+                </article>
+                <article class="card">
+                    <p class="eyebrow">Credentials</p>
+                    <h3 style="margin-bottom: 8px;">Badges</h3>
+                    <div class="focus-display" id="badgeCount">0</div>
+                    <p class="muted">Unlocked achievements.</p>
+                </article>
+            </section>
+
+            <section class="card" style="margin-top: 22px;">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">Path</p>
+                        <h3 style="margin-bottom: 8px;">Unlockable nodes</h3>
+                        <p class="muted">Prerequisites are stored as self-referencing node IDs, matching the MongoDB skill schema.</p>
+                    </div>
+                    <button class="btn btn-secondary" id="syncTreeBtn" type="button">Sync from backend</button>
+                </div>
+                <div class="skill-tree-grid" id="skillTree"></div>
+                <div class="status-line" id="skillStatus"></div>
+            </section>
+
+            <section class="two-column" style="margin-top: 22px;">
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Badge wall</p>
+                            <h3 style="margin-bottom: 8px;">Unlocked badges</h3>
+                        </div>
+                    </div>
+                    <div class="chip-row" id="badgeWall"></div>
+                </article>
+                <article class="card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Passport</p>
+                            <h3 style="margin-bottom: 8px;">Credential readiness</h3>
+                        </div>
+                        <a class="btn btn-secondary" href="progress.html">View progress</a>
+                    </div>
+                    <div class="list" id="passportReadiness"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const skillTree = document.getElementById('skillTree');
+        const skillStatus = document.getElementById('skillStatus');
+        let nodes = StudyQuest.getSkillNodes();
+
+        function renderProgress() {
+            const progress = StudyQuest.getSkillProgress();
+            document.getElementById('levelCount').textContent = progress.level;
+            document.getElementById('xpCount').textContent = `${progress.xpTotal} XP earned`;
+            document.getElementById('divisionName').textContent = progress.leagueDivision;
+            document.getElementById('rankCount').textContent = `${progress.rankPoints} rank points`;
+            document.getElementById('badgeCount').textContent = progress.badges.length;
+            document.getElementById('badgeWall').innerHTML = progress.badges.length
+                ? progress.badges.map((badge) => `<span class="pill success">${e(badge)}</span>`).join('')
+                : '<span class="muted">Unlock a skill to earn your first badge.</span>';
+
+            const topTier = ['Diamond', 'Grandmaster'].includes(progress.leagueDivision);
+            document.getElementById('passportReadiness').innerHTML = `
+                <div class="list-item">
+                    <strong>${topTier ? 'Credential passport ready' : 'Build toward Diamond'}</strong>
+                    <div class="muted">${topTier ? 'Your rank is eligible for top-tier credential export.' : 'Reach Diamond or Grandmaster for the strict credential passport view.'}</div>
+                </div>
+                <div class="list-item">
+                    <strong>${progress.unlockedNodeIds.length}/${nodes.length} nodes unlocked</strong>
+                    ${StudyQuest.renderProgressBar((progress.unlockedNodeIds.length / Math.max(1, nodes.length)) * 100)}
+                </div>
+            `;
+        }
+
+        function renderTree() {
+            const progress = StudyQuest.getSkillProgress();
+            const unlocked = new Set(progress.unlockedNodeIds);
+            skillTree.innerHTML = nodes.map((node) => {
+                const isUnlocked = unlocked.has(node.node_id);
+                const canUnlock = StudyQuest.canUnlockSkill(node, progress.unlockedNodeIds);
+                const prereqs = (node.prerequisite_node_ids || []).map((id) => {
+                    const match = nodes.find((item) => item.node_id === id);
+                    return match?.title || id;
+                });
+                return `
+                    <article class="skill-node ${isUnlocked ? 'unlocked' : canUnlock ? 'available' : 'locked'}">
+                        <div class="task-topline">
+                            <div>
+                                <span class="pill">${e(node.subject || 'General')}</span>
+                                <h3>${e(node.title)}</h3>
+                            </div>
+                            <span class="pill ${isUnlocked ? 'success' : canUnlock ? 'warning' : 'danger'}">${isUnlocked ? 'Unlocked' : canUnlock ? 'Ready' : 'Locked'}</span>
+                        </div>
+                        <p class="muted">${e(node.description || 'Practice this skill to move forward.')}</p>
+                        <div class="task-meta">
+                            <span class="pill">${Number(node.xp_reward || 50)} XP</span>
+                            <span class="pill">${prereqs.length ? `Needs ${e(prereqs.join(', '))}` : 'Starter node'}</span>
+                        </div>
+                        <button class="btn ${canUnlock ? 'btn-primary' : 'btn-ghost'}" type="button" ${isUnlocked || !canUnlock ? 'disabled' : ''} onclick="unlockNode('${node.node_id}')">
+                            ${isUnlocked ? 'Already unlocked' : 'Unlock node'}
+                        </button>
+                    </article>
+                `;
+            }).join('');
+            renderProgress();
+        }
+
+        window.unlockNode = async (nodeId) => {
+            const result = StudyQuest.unlockSkillNode(nodeId);
+            if (!result.ok) {
+                skillStatus.textContent = result.message;
+                skillStatus.className = 'status-line error';
+                return;
+            }
+            skillStatus.textContent = result.alreadyUnlocked ? 'Node already unlocked.' : `${result.node.title} unlocked.`;
+            skillStatus.className = 'status-line';
+            renderTree();
+
+            const session = StudyQuest.getCloudSession();
+            if (session?.token) {
+                StudyQuest.apiRequest('/api/v1/skills/unlock', {
+                    method: 'POST',
+                    token: session.token,
+                    body: { user_id: session.uid, node_id: nodeId },
+                    timeoutMs: 5000
+                }).catch(() => {});
+            }
+        };
+
+        document.getElementById('syncTreeBtn').addEventListener('click', async () => {
+            try {
+                const data = await StudyQuest.apiRequest('/api/v1/skills/tree', { timeoutMs: 5000 });
+                const incomingNodes = Array.isArray(data.nodes) ? data.nodes : data.skills;
+                if (Array.isArray(incomingNodes) && incomingNodes.length) {
+                    nodes = incomingNodes.map((node) => ({
+                        ...node,
+                        description: node.description || `Practice ${node.title} to continue your path.`
+                    }));
+                    StudyQuest.saveSkillNodes(nodes);
+                    skillStatus.textContent = 'Skill tree synced from backend.';
+                } else {
+                    skillStatus.textContent = 'Backend has no custom nodes yet; local tree is active.';
+                }
+                skillStatus.className = 'status-line';
+                renderTree();
+            } catch (error) {
+                skillStatus.textContent = 'Backend unavailable. Local tree is active.';
+                skillStatus.className = 'status-line error';
+            }
+        });
+
+        renderTree();
+    </script>
+</body>
+</html>

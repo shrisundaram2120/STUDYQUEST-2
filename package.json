@@ -5,6 +5,7 @@
   "description": "StudyQuest static PWA with study planning, flashcards, exam mode, OCR, cloud sync hooks, and AI backend integration.",
   "scripts": {
     "start": "node local-server.cjs 4173",
+    "api": "python -m uvicorn studyquest_api:app --host 0.0.0.0 --port 8000",
     "test": "node scripts/run-playwright.cjs",
     "test:e2e": "node scripts/run-playwright.cjs",
     "check:server": "node --check local-server.cjs"

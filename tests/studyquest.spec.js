@@ -25,6 +25,8 @@ test("dashboard exposes the upgraded study surfaces", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Weekly progress" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Flashcards" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Exam Mode" })).toBeVisible();
+  await expect(page.locator('a[href="progress.html"]')).toHaveCount(2);
+  await expect(page.locator('a[href="skill-tree.html"]')).toHaveCount(2);
   await expect(page.locator("#weeklyFocusChart .mini-bar")).toHaveCount(7);
 });
 
@@ -73,4 +75,47 @@ test("AI Quest falls back when no server key is configured", async ({ page }) =>
   );
   await page.getByRole("button", { name: "Summary" }).click();
   await expect(page.getByText("Revision summary")).toBeVisible();
+});
+
+test("Video Quest exposes the split-pane checkpoint workflow", async ({ page }) => {
+  await page.goto("/video-quest.html");
+  await expect(page.getByRole("heading", { name: "Video Quest", exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder("FastAPI base URL")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Load lesson" })).toBeVisible();
+  await expect(page.locator(".video-quest-grid")).toBeVisible();
+  await expect(page.locator("#evaluationPanel")).toBeVisible();
+});
+
+test("Progress page renders analytics and recommendations", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("studyquest.tasks", JSON.stringify([
+      { id: "task-1", title: "Photosynthesis review", subject: "Science", done: true, completedAt: new Date().toISOString() },
+      { id: "task-2", title: "Algebra worksheet", subject: "Math", done: false, deadline: new Date().toISOString().slice(0, 10) }
+    ]));
+    localStorage.setItem("studyquest.focusLog", JSON.stringify([
+      { id: "focus-1", label: "Science focus", minutes: 30, completedAt: new Date().toISOString() }
+    ]));
+  });
+
+  await page.goto("/progress.html");
+  await expect(page.getByRole("heading", { name: "Progress intelligence" })).toBeVisible();
+  await expect(page.locator("#focusChart .mini-bar")).toHaveCount(7);
+  await expect(page.locator("#taskChart .mini-bar")).toHaveCount(14);
+  await expect(page.locator("#subjectHeatmap")).toContainText("Science");
+});
+
+test("Skill Tree unlocks an available node", async ({ page }) => {
+  await page.goto("/skill-tree.html");
+  await expect(page.getByRole("heading", { name: "RPG skill tree" })).toBeVisible();
+  await expect(page.locator(".skill-node")).toHaveCount(6);
+  await page.getByRole("button", { name: "Unlock node" }).first().click();
+  await expect(page.locator("#skillStatus")).toContainText("unlocked");
+  await expect(page.locator("#badgeCount")).not.toHaveText("0");
+});
+
+test("Settings exposes first-party API sync controls", async ({ page }) => {
+  await page.goto("/settings.html");
+  await expect(page.getByPlaceholder("http://127.0.0.1:8000")).toBeVisible();
+  await expect(page.locator("#syncProvider")).toHaveValue("studyquest-api");
+  await expect(page.getByRole("button", { name: "Push data" })).toBeVisible();
 });

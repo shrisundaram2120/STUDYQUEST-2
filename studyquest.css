@@ -882,6 +882,175 @@ button {
     display: none;
 }
 
+.video-quest-controls {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(140px, 0.7fr) auto auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.video-quest-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+    gap: 18px;
+    margin-top: 22px;
+    align-items: start;
+}
+
+.quest-video-pane,
+.quest-evaluation-panel {
+    min-height: 640px;
+}
+
+.video-frame {
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: rgba(14, 22, 35, 0.92);
+    border: 1px solid var(--line);
+}
+
+.video-frame iframe,
+.video-frame #player {
+    width: 100%;
+    height: 100%;
+}
+
+.quest-evaluation-panel {
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+    padding: 20px;
+    transform: translateX(16px);
+    opacity: 0.82;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.quest-evaluation-panel.open {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.milestone-track {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.milestone-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    color: var(--muted);
+}
+
+.milestone-chip.active {
+    border-color: var(--accent);
+    color: var(--accent-deep);
+}
+
+.milestone-chip.complete {
+    background: rgba(45, 115, 90, 0.14);
+    color: var(--green);
+}
+
+.quest-terminal,
+.quest-scratchpad {
+    display: grid;
+    gap: 10px;
+}
+
+.terminal-output {
+    min-height: 88px;
+    padding: 13px;
+    border-radius: var(--radius);
+    background: #111823;
+    color: #d9f7ef;
+    font-family: Consolas, "Courier New", monospace;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.tab-row .active {
+    border-color: var(--accent);
+}
+
+.two-week-chart {
+    grid-template-columns: repeat(14, minmax(0, 1fr));
+}
+
+.heatmap-list,
+.skill-tree-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.heatmap-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 0.9fr) minmax(160px, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px;
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+}
+
+.heatmap-meter {
+    height: 12px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: rgba(23, 32, 43, 0.1);
+}
+
+.heatmap-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--green), var(--gold), var(--danger));
+}
+
+.skill-tree-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.skill-node {
+    display: grid;
+    gap: 12px;
+    min-height: 250px;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    position: relative;
+}
+
+.skill-node h3 {
+    margin: 10px 0 0;
+}
+
+.skill-node.locked {
+    opacity: 0.72;
+}
+
+.skill-node.available {
+    border-color: rgba(179, 134, 47, 0.42);
+    box-shadow: 0 14px 34px rgba(179, 134, 47, 0.12);
+}
+
+.skill-node.unlocked {
+    border-color: rgba(45, 115, 90, 0.36);
+    background: linear-gradient(180deg, rgba(45, 115, 90, 0.12), var(--panel-strong));
+}
+
 .hidden {
     display: none !important;
 }
@@ -889,12 +1058,15 @@ button {
 @media (max-width: 1100px) {
     .three-column,
     .ai-tool-grid,
-    .settings-grid {
+    .settings-grid,
+    .video-quest-grid,
+    .video-quest-controls {
         grid-template-columns: 1fr;
     }
 
     .metric-row,
-    .stat-grid {
+    .stat-grid,
+    .skill-tree-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -1004,7 +1176,7 @@ button {
         bottom: 10px;
         z-index: 10;
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
         gap: 6px;
         padding: 8px;
         border-radius: 16px;
@@ -1069,9 +1241,16 @@ button {
     .subject-row,
     .activity-row,
     .stat-card,
-    .split-actions {
+    .split-actions,
+    .heatmap-row {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .heatmap-row,
+    .skill-tree-grid,
+    .two-week-chart {
+        grid-template-columns: 1fr;
     }
 
     .toolbar .btn,

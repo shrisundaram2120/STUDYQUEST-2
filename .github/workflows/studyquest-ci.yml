@@ -1,0 +1,50 @@
+name: StudyQuest CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check studyquest.js
+          node --check local-server.cjs
+          node --check tests/studyquest.spec.js
+
+      - name: Check Python backend
+        run: |
+          python -m py_compile studyquest_api.py
+          python -c "import studyquest_api; print(studyquest_api.app.title)"
+          python -m pip check
+
+      - name: Run Playwright tests
+        run: npm test

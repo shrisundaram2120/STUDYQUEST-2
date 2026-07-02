@@ -35,6 +35,21 @@
       "description": "Review due flashcards"
     },
     {
+      "name": "Video Quest",
+      "url": "video-quest.html",
+      "description": "Open milestone video checkpoints"
+    },
+    {
+      "name": "Progress",
+      "url": "progress.html",
+      "description": "Open StudyQuest analytics and heatmaps"
+    },
+    {
+      "name": "Skill Tree",
+      "url": "skill-tree.html",
+      "description": "Open RPG learning progression"
+    },
+    {
       "name": "Exam Mode",
       "url": "exams.html",
       "description": "Open exam countdowns and revision plans"
