@@ -14,6 +14,7 @@ const StudyQuest = (() => {
         skillProgress: "studyquest.skillProgress",
         activityEvents: "studyquest.activityEvents",
         notificationSettings: "studyquest.notificationSettings",
+        notificationLog: "studyquest.notificationLog",
         cloudConfig: "studyquest.cloudConfig",
         cloudSession: "studyquest.cloudSession",
         settings: "studyquest.settings"
@@ -32,6 +33,8 @@ const StudyQuest = (() => {
         enabled: false,
         taskReminders: true,
         scheduleReminders: true,
+        taskReminderHour: "08:00",
+        scheduleLeadMinutes: 10,
         streakReminderHour: "19:00"
     };
 
@@ -58,6 +61,8 @@ const StudyQuest = (() => {
     };
 
     const leagueDivisions = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Grandmaster"];
+
+    let notificationTimers = [];
 
     const defaultSkillNodes = [
         {
@@ -543,6 +548,176 @@ const StudyQuest = (() => {
         write(storageKeys.notificationSettings, { ...getNotificationSettings(), ...settings });
     }
 
+    function getNotificationLog() {
+        return read(storageKeys.notificationLog, {});
+    }
+
+    function saveNotificationLog(log) {
+        const entries = Object.entries(log)
+            .sort((a, b) => String(b[1]).localeCompare(String(a[1])))
+            .slice(0, 80);
+        write(storageKeys.notificationLog, Object.fromEntries(entries));
+    }
+
+    function getNotificationPermissionState() {
+        if (!("Notification" in window)) {
+            return "unsupported";
+        }
+        return Notification.permission;
+    }
+
+    function normalizeClockValue(value, fallback = "09:00") {
+        const source = /^\d{2}:\d{2}$/.test(String(value || "")) ? value : fallback;
+        const [hour, minute] = String(source).split(":").map((part) => Number(part));
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+            return fallback;
+        }
+        return `${String(Math.min(23, Math.max(0, hour))).padStart(2, "0")}:${String(Math.min(59, Math.max(0, minute))).padStart(2, "0")}`;
+    }
+
+    function dateAtClock(dateKey, clockValue, fallback) {
+        const time = normalizeClockValue(clockValue, fallback);
+        const date = new Date(`${dateKey}T${time}:00`);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function buildReminderPlan(referenceDate = new Date()) {
+        const settings = getNotificationSettings();
+        const now = new Date(referenceDate);
+        const today = todayKey(now);
+        const todayStart = new Date(`${today}T00:00:00`);
+        const reminders = [];
+        const taskReminderHour = normalizeClockValue(settings.taskReminderHour, "08:00");
+        const scheduleLeadMinutes = clampNumber(settings.scheduleLeadMinutes, 0, 180, 10);
+
+        getTasks()
+            .filter((task) => !task.done && task.deadline)
+            .forEach((task) => {
+                const dueDate = new Date(`${task.deadline}T00:00:00`);
+                if (Number.isNaN(dueDate.getTime())) {
+                    return;
+                }
+                const dayDiff = Math.round((dueDate - todayStart) / 86400000);
+                if (dayDiff < -7 || dayDiff > 14) {
+                    return;
+                }
+
+                let triggerAt = dateAtClock(task.deadline, taskReminderHour, "08:00");
+                let title = dayDiff < 0 ? "Overdue task check-in" : "Task reminder";
+                let body = task.title || "Study task";
+                let priority = task.priority === "High" || dayDiff <= 0 ? "high" : dayDiff <= 2 ? "medium" : "normal";
+
+                if (dayDiff < 0) {
+                    triggerAt = new Date(now.getTime() + 12000);
+                    body = `${body} was due ${formatShortDate(dueDate)}.`;
+                } else if (dayDiff === 0) {
+                    title = "Task due today";
+                    if (triggerAt && triggerAt <= now) {
+                        triggerAt = new Date(now.getTime() + 30000);
+                    }
+                } else if (dayDiff === 1) {
+                    title = "Task due tomorrow";
+                } else {
+                    title = `Task due in ${dayDiff} days`;
+                }
+
+                if (!triggerAt) {
+                    return;
+                }
+
+                reminders.push({
+                    id: `task:${task.id || task.title || task.deadline}`,
+                    type: "Task",
+                    title,
+                    body,
+                    triggerAt: triggerAt.toISOString(),
+                    priority,
+                    enabled: settings.taskReminders !== false,
+                    url: "tasks.html"
+                });
+            });
+
+        getSchedule().forEach((row) => {
+            if (!row.time || !row.task) {
+                return;
+            }
+            const blockStart = dateAtClock(today, row.time, row.time);
+            if (!blockStart || blockStart <= now) {
+                return;
+            }
+            let triggerAt = new Date(blockStart.getTime() - scheduleLeadMinutes * 60000);
+            if (triggerAt <= now) {
+                triggerAt = new Date(now.getTime() + 15000);
+            }
+            reminders.push({
+                id: `schedule:${row.id || row.time}:${today}`,
+                type: "Timetable",
+                title: "Study block starting",
+                body: row.note ? `${row.task}: ${row.note}` : row.task,
+                triggerAt: triggerAt.toISOString(),
+                priority: "medium",
+                enabled: settings.scheduleReminders !== false,
+                url: "ttgen.html"
+            });
+        });
+
+        const hasFocusToday = getFocusLog().some((session) => session.completedAt?.slice(0, 10) === today);
+        const streakTarget = settings.streakReminderHour ? dateAtClock(today, settings.streakReminderHour, "19:00") : null;
+        if (!hasFocusToday && streakTarget && streakTarget > now) {
+            reminders.push({
+                id: `streak:${today}`,
+                type: "Streak",
+                title: "Keep your StudyQuest streak",
+                body: "A short focus session still counts today.",
+                triggerAt: streakTarget.toISOString(),
+                priority: "normal",
+                enabled: Boolean(settings.streakReminderHour),
+                url: "home.html"
+            });
+        }
+
+        return reminders
+            .sort((a, b) => new Date(a.triggerAt) - new Date(b.triggerAt) || a.title.localeCompare(b.title))
+            .slice(0, 30);
+    }
+
+    function formatReminderDue(triggerAt, referenceDate = new Date()) {
+        const target = new Date(triggerAt);
+        const now = new Date(referenceDate);
+        if (Number.isNaN(target.getTime())) {
+            return "No time";
+        }
+        const diff = target - now;
+        if (diff <= 0) {
+            return "Ready now";
+        }
+        const minutes = Math.ceil(diff / 60000);
+        if (minutes < 60) {
+            return `${minutes} min`;
+        }
+        const hours = Math.floor(minutes / 60);
+        const remainder = minutes % 60;
+        if (hours < 24) {
+            return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+        }
+        const days = Math.floor(hours / 24);
+        return `${days} day${days === 1 ? "" : "s"}`;
+    }
+
+    function reminderDeliveryKey(reminder) {
+        return `${todayKey(new Date(reminder.triggerAt))}:${reminder.id}`;
+    }
+
+    function wasReminderSent(reminder) {
+        return Boolean(getNotificationLog()[reminderDeliveryKey(reminder)]);
+    }
+
+    function markReminderSent(reminder) {
+        const log = getNotificationLog();
+        log[reminderDeliveryKey(reminder)] = new Date().toISOString();
+        saveNotificationLog(log);
+    }
+
     async function requestNotifications() {
         if (!("Notification" in window)) {
             return "unsupported";
@@ -556,56 +731,64 @@ const StudyQuest = (() => {
         return permission;
     }
 
-    function notify(title, body) {
+    function notify(title, body, options = {}) {
         const settings = getNotificationSettings();
         if (!settings.enabled || !("Notification" in window) || Notification.permission !== "granted") {
             return false;
         }
         if (navigator.serviceWorker?.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: "STUDYQUEST_NOTIFY", title, body });
+            navigator.serviceWorker.controller.postMessage({
+                type: "STUDYQUEST_NOTIFY",
+                title,
+                body,
+                tag: options.tag,
+                url: options.url
+            });
         } else {
-            new Notification(title, { body, icon: "studyquest-high-resolution-logo.png" });
+            new Notification(title, {
+                body,
+                icon: "studyquest-high-resolution-logo.png",
+                tag: options.tag,
+                data: { url: options.url || "home.html" }
+            });
         }
         return true;
     }
 
+    function sendReminderNotification(reminder) {
+        const sent = notify(reminder.title, reminder.body, {
+            tag: reminder.id,
+            url: reminder.url || "home.html"
+        });
+        if (sent) {
+            markReminderSent(reminder);
+        }
+        return sent;
+    }
+
     function scheduleSessionNotifications() {
+        notificationTimers.forEach((timerId) => window.clearTimeout(timerId));
+        notificationTimers = [];
+
         const settings = getNotificationSettings();
         if (!settings.enabled) {
             return 0;
         }
+
         const now = new Date();
-        const today = todayKey(now);
         let count = 0;
-
-        if (settings.taskReminders) {
-            getTasks().filter((task) => !task.done && task.deadline === today).slice(0, 4).forEach((task, index) => {
-                window.setTimeout(() => notify("StudyQuest task due today", task.title), 5000 + index * 1200);
-                count += 1;
-            });
-        }
-
-        if (settings.scheduleReminders) {
-            getSchedule().forEach((row) => {
-                if (!row.time) return;
-                const target = new Date(`${today}T${row.time}:00`);
-                const delay = target - now;
-                if (delay > 0 && delay < 86400000) {
-                    window.setTimeout(() => notify("Study block starting", row.task), delay);
-                    count += 1;
+        buildReminderPlan(now)
+            .filter((reminder) => reminder.enabled !== false && !wasReminderSent(reminder))
+            .forEach((reminder, index) => {
+                const triggerAt = new Date(reminder.triggerAt);
+                const delay = Math.max(1000 + index * 350, triggerAt - now);
+                if (!Number.isFinite(delay) || delay > 86400000) {
+                    return;
                 }
-            });
-        }
-
-        if (settings.streakReminderHour) {
-            const hasFocusToday = getFocusLog().some((session) => session.completedAt?.slice(0, 10) === today);
-            const target = new Date(`${today}T${settings.streakReminderHour}:00`);
-            const delay = target - now;
-            if (!hasFocusToday && Number.isFinite(delay) && delay > 0 && delay < 86400000) {
-                window.setTimeout(() => notify("Keep your StudyQuest streak", "A short focus session still counts today."), delay);
+                const timerId = window.setTimeout(() => sendReminderNotification(reminder), delay);
+                notificationTimers.push(timerId);
                 count += 1;
-            }
-        }
+            });
 
         return count;
     }
@@ -1393,7 +1576,8 @@ const StudyQuest = (() => {
             ["flashcards.html", "Cards"],
             ["skill-tree.html", "Skills"],
             ["passport.html", "Pass"],
-            ["progress.html", "Progress"]
+            ["reminders.html", "Alert"],
+            ["progress.html", "Prog"]
         ];
         const nav = document.createElement("nav");
         nav.className = "mobile-bottom-nav";
@@ -1496,8 +1680,13 @@ const StudyQuest = (() => {
         unlockSkillNode,
         getNotificationSettings,
         saveNotificationSettings,
+        getNotificationLog,
+        getNotificationPermissionState,
+        buildReminderPlan,
+        formatReminderDue,
         requestNotifications,
         notify,
+        sendReminderNotification,
         scheduleSessionNotifications,
         getCloudConfig,
         saveCloudConfig,

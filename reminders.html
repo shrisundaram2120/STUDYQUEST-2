@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Reminders</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('peace-peaceful-waterfall-nature-wallpaper-preview.jpg');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Reminder center</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a href="passport.html">Passport</a>
+                <a class="active" href="reminders.html">Reminders</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+            <div class="sidebar-note">
+                <strong>Signal check</strong>
+                <p>StudyQuest schedules reminders only while the browser has permission.</p>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Reminder center</h2>
+                    <p>Task deadlines, timetable blocks, and daily streak nudges in one quiet command room.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="dashboard-grid">
+                <article class="card hero-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Status</p>
+                            <h3 style="margin-bottom: 8px;">Notification readiness</h3>
+                        </div>
+                        <span class="pill" id="permissionPill">Checking</span>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric">
+                            <strong id="enabledReminderCount">0</strong>
+                            <span class="muted">Active reminders</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="nextReminderTime">None</strong>
+                            <span class="muted">Next alert</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="deliveredCount">0</strong>
+                            <span class="muted">Sent records</span>
+                        </div>
+                    </div>
+                    <div class="button-row" style="margin-top: 18px;">
+                        <button class="btn btn-primary" id="enableNotificationsBtn" type="button">Enable notifications</button>
+                        <button class="btn btn-secondary" id="scheduleNowBtn" type="button">Schedule in browser</button>
+                        <button class="btn btn-ghost" id="testNotificationBtn" type="button">Send test</button>
+                    </div>
+                    <div class="status-line" id="notificationStatus"></div>
+                </article>
+
+                <article class="card side-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Controls</p>
+                            <h3 style="margin-bottom: 8px;">Reminder rules</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <label class="toggle-row"><input id="notificationsEnabled" type="checkbox"> Notifications enabled</label>
+                        <label class="toggle-row"><input id="taskReminders" type="checkbox"> Task deadline alerts</label>
+                        <label class="toggle-row"><input id="scheduleReminders" type="checkbox"> Timetable alerts</label>
+                        <div class="inline-form">
+                            <label class="field-label" for="taskReminderHour">Task alert time</label>
+                            <input class="field" id="taskReminderHour" type="time">
+                        </div>
+                        <div class="inline-form">
+                            <label class="field-label" for="scheduleLeadMinutes">Timetable lead minutes</label>
+                            <input class="field" id="scheduleLeadMinutes" type="text" inputmode="numeric" placeholder="10">
+                        </div>
+                        <div class="inline-form">
+                            <label class="field-label" for="streakReminderHour">Streak alert time</label>
+                            <input class="field" id="streakReminderHour" type="time">
+                        </div>
+                        <button class="btn btn-primary" id="saveReminderSettingsBtn" type="button">Save reminder rules</button>
+                    </div>
+                </article>
+
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Upcoming</p>
+                            <h3 style="margin-bottom: 8px;">Next reminders</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="refreshRemindersBtn" type="button">Refresh</button>
+                    </div>
+                    <div class="reminder-list" id="reminderList"></div>
+                </article>
+
+                <article class="card half-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Signals</p>
+                            <h3 style="margin-bottom: 8px;">What StudyQuest is watching</h3>
+                        </div>
+                    </div>
+                    <div class="stack" id="signalList"></div>
+                </article>
+
+                <article class="card half-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Quick links</p>
+                            <h3 style="margin-bottom: 8px;">Tune the source data</h3>
+                        </div>
+                    </div>
+                    <div class="button-row">
+                        <a class="btn btn-secondary" href="tasks.html">Open tasks</a>
+                        <a class="btn btn-secondary" href="ttgen.html">Open timetable</a>
+                        <a class="btn btn-secondary" href="home.html">Start focus</a>
+                        <a class="btn btn-ghost" href="settings.html">Settings</a>
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const statusEl = document.getElementById('notificationStatus');
+
+        function readSettingsForm() {
+            return {
+                enabled: document.getElementById('notificationsEnabled').checked,
+                taskReminders: document.getElementById('taskReminders').checked,
+                scheduleReminders: document.getElementById('scheduleReminders').checked,
+                taskReminderHour: document.getElementById('taskReminderHour').value || '08:00',
+                scheduleLeadMinutes: StudyQuest.clampNumber(document.getElementById('scheduleLeadMinutes').value, 0, 180, 10),
+                streakReminderHour: document.getElementById('streakReminderHour').value || '19:00'
+            };
+        }
+
+        function syncSettingsForm() {
+            const settings = StudyQuest.getNotificationSettings();
+            document.getElementById('notificationsEnabled').checked = Boolean(settings.enabled);
+            document.getElementById('taskReminders').checked = Boolean(settings.taskReminders);
+            document.getElementById('scheduleReminders').checked = Boolean(settings.scheduleReminders);
+            document.getElementById('taskReminderHour').value = settings.taskReminderHour || '08:00';
+            document.getElementById('scheduleLeadMinutes').value = settings.scheduleLeadMinutes ?? 10;
+            document.getElementById('streakReminderHour').value = settings.streakReminderHour || '19:00';
+        }
+
+        function renderSignals(reminders) {
+            const tasks = StudyQuest.getTasks().filter((task) => !task.done && task.deadline).length;
+            const blocks = StudyQuest.getSchedule().filter((row) => row.time && row.task).length;
+            const hasFocusToday = StudyQuest.getFocusLog().some((row) => row.completedAt?.slice(0, 10) === StudyQuest.todayKey());
+            document.getElementById('signalList').innerHTML = [
+                ['Task deadlines', `${tasks} open dated task${tasks === 1 ? '' : 's'}`],
+                ['Timetable blocks', `${blocks} saved block${blocks === 1 ? '' : 's'}`],
+                ['Daily streak', hasFocusToday ? 'Focus logged today' : 'No focus logged today'],
+                ['Preview window', `${reminders.length} candidate reminder${reminders.length === 1 ? '' : 's'}`]
+            ].map(([label, value]) => `
+                <div class="list-item">
+                    <strong>${e(label)}</strong>
+                    <p class="muted">${e(value)}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderReminders() {
+            const reminders = StudyQuest.buildReminderPlan();
+            const enabledReminders = reminders.filter((reminder) => reminder.enabled !== false);
+            const nextReminder = enabledReminders[0];
+            const permission = StudyQuest.getNotificationPermissionState();
+            const notificationLog = StudyQuest.getNotificationLog();
+
+            document.getElementById('permissionPill').textContent = permission;
+            document.getElementById('enabledReminderCount').textContent = String(enabledReminders.length);
+            document.getElementById('nextReminderTime').textContent = nextReminder ? StudyQuest.formatReminderDue(nextReminder.triggerAt) : 'None';
+            document.getElementById('deliveredCount').textContent = String(Object.keys(notificationLog).length);
+
+            document.getElementById('reminderList').innerHTML = reminders.length ? reminders.map((reminder) => {
+                const trigger = new Date(reminder.triggerAt);
+                const disabled = reminder.enabled === false;
+                return `
+                    <div class="reminder-card ${disabled ? 'muted-reminder' : ''}">
+                        <div>
+                            <div class="task-topline">
+                                <strong>${e(reminder.title)}</strong>
+                                <span class="pill ${reminder.priority === 'high' ? 'warning' : ''}">${e(reminder.type)}</span>
+                            </div>
+                            <p class="muted">${e(reminder.body)}</p>
+                            <div class="metadata-row">
+                                <span class="urgency-badge">${e(StudyQuest.formatReminderDue(reminder.triggerAt))}</span>
+                                <span class="pill">${e(trigger.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span>
+                                <span class="pill">${disabled ? 'Muted' : 'Enabled'}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" type="button" data-send-reminder="${e(reminder.id)}">Send now</button>
+                    </div>
+                `;
+            }).join('') : `
+                <div class="empty-state">
+                    <strong>No reminders queued.</strong>
+                    <p class="muted">Add dated tasks or timetable blocks to create upcoming reminders.</p>
+                </div>
+            `;
+
+            document.querySelectorAll('[data-send-reminder]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const reminder = reminders.find((row) => row.id === button.dataset.sendReminder);
+                    const sent = reminder ? StudyQuest.sendReminderNotification(reminder) : false;
+                    statusEl.textContent = sent ? 'Reminder sent.' : 'Browser notification permission is not active.';
+                    renderReminders();
+                });
+            });
+
+            renderSignals(reminders);
+        }
+
+        document.getElementById('saveReminderSettingsBtn').addEventListener('click', () => {
+            StudyQuest.saveNotificationSettings(readSettingsForm());
+            const scheduled = StudyQuest.scheduleSessionNotifications();
+            statusEl.textContent = `Reminder rules saved. ${scheduled} browser timer${scheduled === 1 ? '' : 's'} active.`;
+            renderReminders();
+        });
+
+        document.getElementById('enableNotificationsBtn').addEventListener('click', async () => {
+            const permission = await StudyQuest.requestNotifications();
+            StudyQuest.saveNotificationSettings({ ...readSettingsForm(), enabled: permission === 'granted' });
+            syncSettingsForm();
+            const scheduled = StudyQuest.scheduleSessionNotifications();
+            statusEl.textContent = `Notification permission: ${permission}. ${scheduled} timer${scheduled === 1 ? '' : 's'} active.`;
+            renderReminders();
+        });
+
+        document.getElementById('scheduleNowBtn').addEventListener('click', () => {
+            StudyQuest.saveNotificationSettings(readSettingsForm());
+            const scheduled = StudyQuest.scheduleSessionNotifications();
+            statusEl.textContent = `${scheduled} reminder timer${scheduled === 1 ? '' : 's'} scheduled in this browser.`;
+            renderReminders();
+        });
+
+        document.getElementById('testNotificationBtn').addEventListener('click', () => {
+            StudyQuest.saveNotificationSettings(readSettingsForm());
+            const sent = StudyQuest.notify('StudyQuest reminder test', 'Your reminder center is ready.', { tag: 'studyquest-test', url: 'reminders.html' });
+            statusEl.textContent = sent ? 'Test notification sent.' : 'Enable browser notification permission first.';
+        });
+
+        document.getElementById('refreshRemindersBtn').addEventListener('click', renderReminders);
+
+        syncSettingsForm();
+        renderReminders();
+    </script>
+</body>
+</html>

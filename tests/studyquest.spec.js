@@ -28,6 +28,7 @@ test("dashboard exposes the upgraded study surfaces", async ({ page }) => {
   await expect(page.locator('a[href="progress.html"]')).toHaveCount(2);
   await expect(page.locator('a[href="skill-tree.html"]')).toHaveCount(2);
   await expect(page.locator('a[href="passport.html"]')).toHaveCount(2);
+  await expect(page.locator('a[href="reminders.html"]')).toHaveCount(2);
   await expect(page.locator("#weeklyFocusChart .mini-bar")).toHaveCount(7);
 });
 
@@ -151,4 +152,51 @@ test("Credential Passport renders redacted export text", async ({ page }) => {
   await expect(page.locator("#passportProfile")).toContainText("[Aadhaar_Redacted]");
   await expect(page.locator("#passportOutput")).toHaveValue(/Email_Redacted/);
   await expect(page.getByRole("button", { name: "Download markdown" })).toBeVisible();
+});
+
+test("Reminder Center previews and saves notification rules", async ({ page }) => {
+  await page.addInitScript(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem("studyquest.tasks", JSON.stringify([
+      {
+        id: "task-reminder-1",
+        title: "Study electricity numericals",
+        subject: "Science",
+        priority: "High",
+        deadline: today,
+        done: false
+      }
+    ]));
+    localStorage.setItem("studyquest.schedule", JSON.stringify([
+      {
+        id: "schedule-reminder-1",
+        time: "23:59",
+        task: "Timed algebra sprint",
+        note: "Ten mark practice"
+      }
+    ]));
+    localStorage.setItem("studyquest.notificationSettings", JSON.stringify({
+      enabled: false,
+      taskReminders: true,
+      scheduleReminders: true,
+      taskReminderHour: "08:00",
+      scheduleLeadMinutes: 5,
+      streakReminderHour: "23:59"
+    }));
+  });
+
+  await page.goto("/reminders.html");
+  await expect(page.getByRole("heading", { name: "Reminder center" })).toBeVisible();
+  await expect(page.locator("#permissionPill")).toContainText(/default|denied|granted|unsupported/);
+  await expect(page.locator("#reminderList")).toContainText("Task due today");
+  await expect(page.locator("#reminderList")).toContainText("Study electricity numericals");
+  await expect(page.locator("#reminderList")).toContainText("Timed algebra sprint");
+
+  await page.locator("#scheduleLeadMinutes").fill("15");
+  await page.getByRole("button", { name: "Save reminder rules" }).click();
+  await expect(page.locator("#notificationStatus")).toContainText("Reminder rules saved");
+  await expect(page.locator("#enabledReminderCount")).not.toHaveText("0");
+
+  const savedLead = await page.evaluate(() => JSON.parse(localStorage.getItem("studyquest.notificationSettings")).scheduleLeadMinutes);
+  expect(savedLead).toBe(15);
 });

@@ -1,6 +1,6 @@
 # StudyQuest
 
-StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, redacted Credential Passport exports, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
+StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, browser reminders, redacted Credential Passport exports, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
 
 ## Run Locally
 
@@ -56,6 +56,7 @@ Copy `.env.example` to `.env` for local backend configuration. Never commit real
 - `progress.html`: weekly focus graphs, task completion history, subject pressure heatmap, exam readiness, recommendations, and activity history.
 - `skill-tree.html`: RPG learning path with prerequisite node IDs, XP, badges, rank points, and league progression.
 - `passport.html`: redacted Credential Passport with verified execution metrics, subject signals, raw output logs, and markdown export.
+- `reminders.html`: notification center for task deadlines, timetable blocks, test alerts, and streak reminders.
 - `video-quest.html`: YouTube milestone hard-pause checkpoints with terminal/scratchpad evaluation panels.
 
 ## GitHub Pages

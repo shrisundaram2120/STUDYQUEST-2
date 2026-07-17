@@ -1,4 +1,4 @@
-const CACHE_NAME = "studyquest-v8";
+const CACHE_NAME = "studyquest-v9";
 const CORE_ASSETS = [
     "./",
     "./index.html",
@@ -11,6 +11,7 @@ const CORE_ASSETS = [
     "./progress.html",
     "./skill-tree.html",
     "./passport.html",
+    "./reminders.html",
     "./source.html",
     "./aiquest.html",
     "./video-quest.html",
@@ -82,6 +83,22 @@ self.addEventListener("message", (event) => {
     self.registration.showNotification(event.data.title || "StudyQuest", {
         body: event.data.body || "You have a study reminder.",
         icon: "./studyquest-high-resolution-logo.png",
-        badge: "./studyquest-high-resolution-logo-black-transparent.png"
+        badge: "./studyquest-high-resolution-logo-black-transparent.png",
+        tag: event.data.tag || "studyquest-reminder",
+        data: { url: event.data.url || "./home.html" }
     });
+});
+
+self.addEventListener("notificationclick", (event) => {
+    event.notification.close();
+    const targetUrl = new URL(event.notification.data?.url || "./home.html", self.registration.scope).href;
+    event.waitUntil(
+        clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+            const matchingClient = clientList.find((client) => client.url === targetUrl);
+            if (matchingClient) {
+                return matchingClient.focus();
+            }
+            return clients.openWindow(targetUrl);
+        })
+    );
 });

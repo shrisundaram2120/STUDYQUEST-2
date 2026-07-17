@@ -55,6 +55,11 @@
       "description": "Open redacted credential passport"
     },
     {
+      "name": "Reminders",
+      "url": "reminders.html",
+      "description": "Open task, timetable, and streak reminders"
+    },
+    {
       "name": "Exam Mode",
       "url": "exams.html",
       "description": "Open exam countdowns and revision plans"
