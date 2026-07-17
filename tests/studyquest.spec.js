@@ -154,6 +154,41 @@ test("Credential Passport renders redacted export text", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Download markdown" })).toBeVisible();
 });
 
+test("OCR extracts text in-app and saves it to notes", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.Tesseract = {
+      recognize: async (_image, _language, options = {}) => {
+        options.logger?.({ status: "recognizing text", progress: 0.72 });
+        return {
+          data: {
+            text: "Photosynthesis uses light energy to make glucose.",
+            confidence: 94
+          }
+        };
+      }
+    };
+  });
+
+  await page.goto("/ocr.html");
+  await expect(page.getByRole("heading", { name: "Image to text" })).toBeVisible();
+  await expect(page.locator("iframe")).toHaveCount(0);
+
+  await page.locator("#imageInput").setInputFiles({
+    name: "biology-notes.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("mock image bytes")
+  });
+  await page.getByRole("button", { name: "Extract text" }).click();
+
+  await expect(page.locator("#ocrText")).toHaveValue("Photosynthesis uses light energy to make glucose.");
+  await expect(page.locator("#ocrConfidence")).toHaveText("94%");
+  await expect(page.locator("#ocrHistoryList")).toContainText("biology-notes");
+
+  await page.getByRole("button", { name: "Save to Notes" }).click();
+  const savedNote = await page.evaluate(() => JSON.parse(localStorage.getItem("studyquest.notes")).some((note) => note.content.includes("Photosynthesis uses light energy")));
+  expect(savedNote).toBe(true);
+});
+
 test("Reminder Center previews and saves notification rules", async ({ page }) => {
   await page.addInitScript(() => {
     const today = new Date().toISOString().slice(0, 10);

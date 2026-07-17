@@ -3,6 +3,7 @@ const StudyQuest = (() => {
         profile: "studyquest.profile",
         tasks: "studyquest.tasks",
         notes: "studyquest.notes",
+        ocrHistory: "studyquest.ocrHistory",
         schedule: "studyquest.schedule",
         dashboardTasks: "studyquest.dashboardTasks",
         focusLog: "studyquest.focusLog",
@@ -197,6 +198,14 @@ const StudyQuest = (() => {
 
     function saveNotes(notes) {
         write(storageKeys.notes, notes);
+    }
+
+    function getOcrHistory() {
+        return read(storageKeys.ocrHistory, []);
+    }
+
+    function saveOcrHistory(rows) {
+        write(storageKeys.ocrHistory, rows.slice(0, 30));
     }
 
     function getSchedule() {
@@ -1287,6 +1296,7 @@ const StudyQuest = (() => {
         [
             storageKeys.tasks,
             storageKeys.notes,
+            storageKeys.ocrHistory,
             storageKeys.schedule,
             storageKeys.dashboardTasks,
             storageKeys.focusLog,
@@ -1641,6 +1651,8 @@ const StudyQuest = (() => {
         saveTasks,
         getNotes,
         saveNotes,
+        getOcrHistory,
+        saveOcrHistory,
         getSchedule,
         saveSchedule,
         getDashboardTasks,
