@@ -34,10 +34,13 @@ MONGODB_DB_NAME=studyquest
 GEMINI_API_KEY=your_free_tier_gemini_key
 STUDYQUEST_ADMIN_KEY=change_me
 STUDYQUEST_JWT_SECRET=change_me_too
+STUDYQUEST_SYNC_PAYLOAD_MAX_BYTES=750000
 python -m uvicorn studyquest_api:app --host 0.0.0.0 --port 8000
 ```
 
 Use `video-quest.html` to load lessons from `/api/v1/video-lessons/{lesson_id}`, run 30-minute dungeon sprints, and submit milestone solutions to `/api/v1/quests/evaluate`.
+
+The API keeps free-tier pressure low with in-process rate limits for auth, sprints, and quest evaluation, startup-created MongoDB indexes, signed bearer tokens, owner/admin checks for Credential Passports, and a configurable sync payload cap.
 
 The repo also includes `Procfile`, `runtime.txt`, and `render.yaml` for deploying the single FastAPI app to a free Python host such as Render. Set the secrets from `.env.example`, then paste the deployed API URL into StudyQuest Settings.
 

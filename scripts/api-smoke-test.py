@@ -14,6 +14,7 @@ def main() -> None:
     health = client.get("/health")
     assert health.status_code == 200, health.text
     assert health.json()["service"] == "StudyQuest API"
+    assert "rate_limit_buckets" in health.json()
 
     lesson = client.get("/api/v1/video-lessons/sample-video-quest")
     assert lesson.status_code == 200, lesson.text
@@ -37,6 +38,9 @@ def main() -> None:
     )
     assert evaluation.status_code == 200, evaluation.text
     assert evaluation.json()["source"] in {"local_socratic_fallback", "gemini", "mongo_vector_cache"}
+
+    passport = client.get("/api/v1/passports/smoke-user")
+    assert passport.status_code == 401, passport.text
 
     print("StudyQuest API smoke test passed.")
 

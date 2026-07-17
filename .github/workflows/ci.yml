@@ -18,6 +18,11 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
         run: npm install
 
@@ -26,6 +31,18 @@ jobs:
 
       - name: Check server syntax
         run: npm run check:server
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Check API syntax
+        run: python -m py_compile studyquest_api.py scripts/api-smoke-test.py
+
+      - name: Check Python dependencies
+        run: python -m pip check
+
+      - name: Run API smoke test
+        run: python scripts/api-smoke-test.py
 
       - name: Run Playwright tests
         run: npm test

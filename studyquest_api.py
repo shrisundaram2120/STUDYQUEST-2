@@ -18,6 +18,7 @@ import math
 import os
 import re
 import secrets
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
@@ -25,7 +26,7 @@ from enum import Enum
 from typing import Any, Literal
 
 import httpx
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -42,6 +43,11 @@ VECTOR_INDEX_NAME = os.getenv("MONGODB_VECTOR_INDEX", "quest_solution_vector_ind
 VECTOR_DIMENSIONS = int(os.getenv("STUDYQUEST_VECTOR_DIMENSIONS", "256"))
 SPRINT_MINUTES = int(os.getenv("STUDYQUEST_SPRINT_MINUTES", "30"))
 AUTH_TOKEN_HOURS = int(os.getenv("STUDYQUEST_AUTH_TOKEN_HOURS", "336"))
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("STUDYQUEST_RATE_LIMIT_WINDOW_SECONDS", "60"))
+AUTH_RATE_LIMIT = int(os.getenv("STUDYQUEST_AUTH_RATE_LIMIT", "12"))
+QUEST_RATE_LIMIT = int(os.getenv("STUDYQUEST_QUEST_RATE_LIMIT", "40"))
+SPRINT_RATE_LIMIT = int(os.getenv("STUDYQUEST_SPRINT_RATE_LIMIT", "30"))
+SYNC_PAYLOAD_MAX_BYTES = int(os.getenv("STUDYQUEST_SYNC_PAYLOAD_MAX_BYTES", "750000"))
 
 
 class LeagueDivision(str, Enum):
@@ -301,6 +307,13 @@ class SyncPushRequest(BaseModel):
     payload: dict[str, Any]
     client_updated_at: datetime | None = None
 
+    @model_validator(mode="after")
+    def enforce_payload_size(self) -> "SyncPushRequest":
+        size = len(json.dumps(self.payload, default=str, separators=(",", ":")).encode("utf-8"))
+        if size > SYNC_PAYLOAD_MAX_BYTES:
+            raise ValueError(f"Sync payload is too large for free-tier storage ({size} bytes).")
+        return self
+
 
 class SyncPullResponse(BaseModel):
     payload: dict[str, Any] | None = None
@@ -326,12 +339,53 @@ if MONGODB_URI:
 
 ACTIVE_SPRINTS: dict[str, SprintState] = {}
 SPRINT_LOCK = asyncio.Lock()
+RATE_LIMIT_BUCKETS: dict[str, list[float]] = {}
+RATE_LIMIT_LOCK = asyncio.Lock()
 
 
 def get_db() -> AsyncIOMotorDatabase:
     if db is None:
         raise HTTPException(status_code=503, detail="MongoDB is not configured. Set MONGODB_URI.")
     return db
+
+
+def request_identity(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+    client_host = request.client.host if request.client else "unknown"
+    return forwarded_for or client_host
+
+
+async def enforce_rate_limit(request: Request, bucket: str, max_requests: int) -> None:
+    if max_requests <= 0:
+        return
+
+    identity = request_identity(request)
+    key = f"{bucket}:{identity}"
+    now = time.monotonic()
+    cutoff = now - RATE_LIMIT_WINDOW_SECONDS
+
+    async with RATE_LIMIT_LOCK:
+        recent = [stamp for stamp in RATE_LIMIT_BUCKETS.get(key, []) if stamp >= cutoff]
+        if len(recent) >= max_requests:
+            raise HTTPException(status_code=429, detail="Too many requests. Please retry shortly.")
+        recent.append(now)
+        RATE_LIMIT_BUCKETS[key] = recent
+
+        if len(RATE_LIMIT_BUCKETS) > 1000:
+            stale_keys = [
+                bucket_key
+                for bucket_key, stamps in RATE_LIMIT_BUCKETS.items()
+                if not stamps or max(stamps) < cutoff
+            ]
+            for bucket_key in stale_keys[:250]:
+                RATE_LIMIT_BUCKETS.pop(bucket_key, None)
+
+
+def rate_limited(bucket: str, max_requests: int):
+    async def dependency(request: Request) -> None:
+        await enforce_rate_limit(request, bucket, max_requests)
+
+    return dependency
 
 
 def b64url_encode(raw: bytes) -> str:
@@ -414,21 +468,28 @@ async def require_admin_key(x_studyquest_admin_key: str | None = Header(default=
         raise HTTPException(status_code=403, detail="Invalid admin key.")
 
 
+def has_role(account: dict[str, Any], role: str) -> bool:
+    return role in set(account.get("roles", ["learner"]))
+
+
 async def create_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.users.create_index("user_id", unique=True)
     await database.users.create_index("league.division")
+    await database.users.create_index([("league.division", 1), ("league.rank_points", -1)])
     await database.auth_accounts.create_index("email_hash", unique=True)
     await database.auth_accounts.create_index("user_id", unique=True)
     await database.sync_snapshots.create_index("user_id", unique=True)
     await database.sync_snapshots.create_index("server_updated_at")
     await database.skills.create_index("node_id", unique=True)
     await database.skills.create_index("prerequisite_node_ids")
+    await database.video_lessons.create_index("lesson_id", unique=True)
     await database.quest_evaluation_cache.create_index(
         [("video_id", 1), ("milestone_timestamp", 1), ("normalized_solution", 1)],
         unique=True,
         name="quest_cache_exact_unique",
     )
     await database.quest_evaluation_cache.create_index([("video_id", 1), ("milestone_timestamp", 1), ("verified", 1)])
+    await database.quest_evaluation_cache.create_index("updated_at")
     await database.sprint_events.create_index([("user_id", 1), ("created_at", -1)])
 
     try:
@@ -477,10 +538,11 @@ async def health() -> dict[str, Any]:
         "mongo_configured": db is not None,
         "gemini_configured": bool(GEMINI_API_KEY),
         "active_sprints": len(ACTIVE_SPRINTS),
+        "rate_limit_buckets": len(RATE_LIMIT_BUCKETS),
     }
 
 
-@app.post("/api/v1/auth/signup", response_model=AuthResponse)
+@app.post("/api/v1/auth/signup", response_model=AuthResponse, dependencies=[Depends(rate_limited("auth", AUTH_RATE_LIMIT))])
 async def signup(request: AuthRequest) -> AuthResponse:
     database = get_db()
     email_digest = email_hash(request.email)
@@ -528,7 +590,7 @@ async def signup(request: AuthRequest) -> AuthResponse:
     )
 
 
-@app.post("/api/v1/auth/login", response_model=AuthResponse)
+@app.post("/api/v1/auth/login", response_model=AuthResponse, dependencies=[Depends(rate_limited("auth", AUTH_RATE_LIMIT))])
 async def login(request: AuthRequest) -> AuthResponse:
     database = get_db()
     account = await database.auth_accounts.find_one({"email_hash": email_hash(request.email)}, {"_id": 0})
@@ -636,7 +698,7 @@ async def unlock_skill(request: SkillUnlockRequest, background_tasks: Background
     return {"ok": True, "node_id": request.node_id}
 
 
-@app.post("/api/v1/sprints/start", response_model=SprintResponse)
+@app.post("/api/v1/sprints/start", response_model=SprintResponse, dependencies=[Depends(rate_limited("sprint", SPRINT_RATE_LIMIT))])
 async def start_sprint(request: SprintStartRequest) -> SprintResponse:
     sprint = SprintState(
         sprint_id=str(uuid.uuid4()),
@@ -702,7 +764,7 @@ async def get_video_lesson(lesson_id: str) -> LessonConfig:
     )
 
 
-@app.post("/api/v1/quests/evaluate", response_model=QuestEvaluationResponse)
+@app.post("/api/v1/quests/evaluate", response_model=QuestEvaluationResponse, dependencies=[Depends(rate_limited("quest", QUEST_RATE_LIMIT))])
 async def evaluate_quest(request: QuestEvaluationRequest, background_tasks: BackgroundTasks) -> QuestEvaluationResponse:
     cache_hit = await find_verified_cache_hit(request)
     if cache_hit:
@@ -1017,7 +1079,9 @@ async def apply_evaluation_rewards(
 
 
 @app.get("/api/v1/passports/{user_id}", response_model=CredentialPassport)
-async def credential_passport(user_id: str) -> CredentialPassport:
+async def credential_passport(user_id: str, account: dict[str, Any] = Depends(require_user)) -> CredentialPassport:
+    if account["user_id"] != user_id and not has_role(account, "admin"):
+        raise HTTPException(status_code=403, detail="You can only read your own Credential Passport.")
     passport = await build_passport({"user_id": user_id})
     if not passport:
         raise HTTPException(status_code=404, detail="Top-tier Credential Passport not found.")
