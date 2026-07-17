@@ -61,6 +61,12 @@
                 </div>
                 <div class="inline-form">
                     <select class="select" id="languageSelect"></select>
+                    <select class="select" id="resourceTypeFilter">
+                        <option value="all">All resource types</option>
+                        <option value="Video">Video</option>
+                        <option value="Text">Text</option>
+                        <option value="Practice">Practice</option>
+                    </select>
                     <input class="field" id="resourceSearch" type="search" placeholder="Search resources">
                 </div>
             </section>
@@ -87,11 +93,19 @@
                     <div class="stack">
                         <input class="field" id="customTitle" type="text" placeholder="Resource title">
                         <input class="field" id="customUrl" type="url" placeholder="https://example.com">
+                        <input class="field" id="customSubject" type="text" placeholder="Subject or exam">
+                        <input class="field" id="customTags" type="text" placeholder="Tags, comma separated">
                         <select class="select" id="customType">
                             <option value="Video">Video</option>
                             <option value="Text">Text</option>
                             <option value="Practice">Practice</option>
                         </select>
+                        <select class="select" id="customTrust">
+                            <option value="Teacher verified">Teacher verified</option>
+                            <option value="Needs review">Needs review</option>
+                            <option value="Student shared">Student shared</option>
+                        </select>
+                        <textarea class="textarea short" id="customNote" placeholder="Why this resource is useful, what chapter it covers, or when to use it"></textarea>
                         <button class="btn btn-primary" id="addCustomResourceBtn" type="button">Save resource</button>
                         <div class="status-line" id="resourceStatus"></div>
                     </div>
@@ -102,6 +116,22 @@
                             <p class="eyebrow">Bookmarks</p>
                             <h3 style="margin-bottom: 8px;">Saved resources</h3>
                         </div>
+                        <button class="btn btn-secondary" id="copySharePackBtn" type="button">Copy share pack</button>
+                    </div>
+                    <div class="inline-form" style="margin-bottom: 14px;">
+                        <input class="field" id="bookmarkSearch" type="search" placeholder="Search saved resources">
+                        <select class="select" id="bookmarkTrustFilter">
+                            <option value="all">All trust labels</option>
+                            <option value="Curated">Curated</option>
+                            <option value="Teacher verified">Teacher verified</option>
+                            <option value="Needs review">Needs review</option>
+                            <option value="Student shared">Student shared</option>
+                        </select>
+                    </div>
+                    <div class="button-row" style="margin-bottom: 14px;">
+                        <button class="btn btn-ghost" id="exportSharePackBtn" type="button">Export JSON</button>
+                        <input class="field" id="importSharePackFile" type="file" accept="application/json,.json">
+                        <button class="btn btn-ghost" id="importSharePackBtn" type="button">Import JSON</button>
                     </div>
                     <div class="list" id="bookmarksList"></div>
                 </article>
@@ -194,7 +224,10 @@
         };
 
         const languageSelect = document.getElementById('languageSelect');
+        const resourceTypeFilter = document.getElementById('resourceTypeFilter');
         const resourceSearch = document.getElementById('resourceSearch');
+        const bookmarkSearch = document.getElementById('bookmarkSearch');
+        const bookmarkTrustFilter = document.getElementById('bookmarkTrustFilter');
         const videoList = document.getElementById('videoList');
         const textList = document.getElementById('textList');
         const bookmarksList = document.getElementById('bookmarksList');
@@ -208,21 +241,61 @@
             resourceStatus.className = type === 'error' ? 'status-line error' : 'status-line';
         }
 
-        function saveBookmark(title, url, type, language = 'Custom') {
-            if (!title || !url) return;
-            const alreadySaved = bookmarks.some((bookmark) => bookmark.url === url);
+        function validateUrl(url) {
+            try {
+                const parsed = new URL(url);
+                return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function parseTags(value) {
+            return String(value || '').split(',').map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
+        }
+
+        function normalizeBookmark(bookmark) {
+            const url = validateUrl(bookmark.url || '');
+            if (!url) return null;
+            return {
+                id: bookmark.id || StudyQuest.newId(),
+                title: String(bookmark.title || url).trim(),
+                url,
+                type: bookmark.type || 'Text',
+                language: bookmark.language || 'Custom',
+                subject: bookmark.subject || 'General',
+                tags: Array.isArray(bookmark.tags) ? bookmark.tags.slice(0, 8) : parseTags(bookmark.tags),
+                trust: bookmark.trust || 'Student shared',
+                note: bookmark.note || '',
+                savedAt: bookmark.savedAt || new Date().toISOString()
+            };
+        }
+
+        function saveBookmark(bookmark) {
+            const nextBookmark = normalizeBookmark(bookmark);
+            if (!nextBookmark) {
+                setStatus('Enter a valid http or https URL.', 'error');
+                return false;
+            }
+            const alreadySaved = bookmarks.some((item) => validateUrl(item.url || '') === nextBookmark.url);
             if (alreadySaved) {
                 setStatus('That resource is already saved.');
-                return;
+                return false;
             }
-            bookmarks.unshift({ id: StudyQuest.newId(), title, url, type, language, savedAt: new Date().toISOString() });
+            bookmarks.unshift(nextBookmark);
             StudyQuest.saveResourceBookmarks(bookmarks);
             renderBookmarks();
             setStatus('Resource saved.');
+            return true;
         }
 
         function renderResourceList(items, type, target) {
             const query = resourceSearch.value.trim().toLowerCase();
+            const selectedType = resourceTypeFilter.value;
+            if (selectedType !== 'all' && selectedType !== type) {
+                target.innerHTML = '<div class="empty">This type is hidden by the filter.</div>';
+                return;
+            }
             const filtered = items.filter(([title, url]) => `${title} ${url}`.toLowerCase().includes(query));
             if (!filtered.length) {
                 target.innerHTML = '<div class="empty">No resources match that search.</div>';
@@ -240,7 +313,16 @@
             `).join('');
             target.querySelectorAll('[data-save-resource]').forEach((button) => {
                 button.addEventListener('click', () => {
-                    saveBookmark(button.dataset.title, button.dataset.url, button.dataset.type, languageSelect.value);
+                    saveBookmark({
+                        title: button.dataset.title,
+                        url: button.dataset.url,
+                        type: button.dataset.type,
+                        language: languageSelect.value,
+                        subject: 'Curated',
+                        trust: 'Curated',
+                        tags: [languageSelect.value, button.dataset.type],
+                        note: 'StudyQuest curated resource.'
+                    });
                 });
             });
         }
@@ -252,11 +334,26 @@
         }
 
         function renderBookmarks() {
+            const query = bookmarkSearch.value.trim().toLowerCase();
+            const trust = bookmarkTrustFilter.value;
+            const visible = bookmarks
+                .map(normalizeBookmark)
+                .filter(Boolean)
+                .filter((bookmark) => {
+                    const haystack = `${bookmark.title} ${bookmark.url} ${bookmark.type} ${bookmark.language} ${bookmark.subject} ${bookmark.trust} ${bookmark.tags.join(' ')} ${bookmark.note}`.toLowerCase();
+                    return (!query || haystack.includes(query)) && (trust === 'all' || bookmark.trust === trust);
+                });
+
             if (!bookmarks.length) {
                 bookmarksList.innerHTML = '<div class="empty">Saved resources will appear here.</div>';
                 return;
             }
-            bookmarksList.innerHTML = bookmarks.map((bookmark) => `
+            if (!visible.length) {
+                bookmarksList.innerHTML = '<div class="empty">No saved resources match those filters.</div>';
+                return;
+            }
+
+            bookmarksList.innerHTML = visible.map((bookmark) => `
                 <div class="task-card">
                     <div class="task-topline">
                         <div>
@@ -264,44 +361,119 @@
                             <div class="task-meta">
                                 <span class="pill">${e(bookmark.type)}</span>
                                 <span class="pill">${e(bookmark.language || 'Custom')}</span>
+                                <span class="pill">${e(bookmark.trust)}</span>
+                                <span class="pill">${e(bookmark.subject)}</span>
                             </div>
                             <div class="muted break-word" style="margin-top: 8px;">${e(bookmark.url)}</div>
+                            ${bookmark.note ? `<p class="muted">${e(bookmark.note)}</p>` : ''}
+                            ${bookmark.tags.length ? `<div class="metadata-row">${bookmark.tags.map((tag) => `<span class="urgency-badge">${e(tag)}</span>`).join('')}</div>` : ''}
                         </div>
                         <div class="toolbar">
                             <a class="btn btn-secondary" href="${e(bookmark.url)}" target="_blank" rel="noopener noreferrer">Open</a>
-                            <button class="btn btn-danger" type="button" onclick="deleteBookmark('${bookmark.id}')">Delete</button>
+                            <button class="btn btn-danger" type="button" data-delete-bookmark="${e(bookmark.id)}">Delete</button>
                         </div>
                     </div>
                 </div>
             `).join('');
+            bookmarksList.querySelectorAll('[data-delete-bookmark]').forEach((button) => {
+                button.addEventListener('click', () => deleteBookmark(button.dataset.deleteBookmark));
+            });
         }
 
-        window.deleteBookmark = (bookmarkId) => {
+        function deleteBookmark(bookmarkId) {
             bookmarks = bookmarks.filter((bookmark) => bookmark.id !== bookmarkId);
             StudyQuest.saveResourceBookmarks(bookmarks);
             renderBookmarks();
-        };
+        }
+
+        function buildSharePack() {
+            return {
+                app: 'StudyQuest',
+                type: 'resource-share-pack',
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                resources: bookmarks.map(normalizeBookmark).filter(Boolean)
+            };
+        }
 
         document.getElementById('addCustomResourceBtn').addEventListener('click', () => {
             const title = document.getElementById('customTitle').value.trim();
             const url = document.getElementById('customUrl').value.trim();
             const type = document.getElementById('customType').value;
+            const subject = document.getElementById('customSubject').value.trim() || 'General';
+            const tags = parseTags(document.getElementById('customTags').value);
+            const trust = document.getElementById('customTrust').value;
+            const note = document.getElementById('customNote').value.trim();
             if (!title || !url) {
                 setStatus('Enter a title and URL.', 'error');
                 return;
             }
-            saveBookmark(title, url, type);
-            document.getElementById('customTitle').value = '';
-            document.getElementById('customUrl').value = '';
+            if (saveBookmark({ title, url, type, subject, tags, trust, note, language: 'Custom' })) {
+                document.getElementById('customTitle').value = '';
+                document.getElementById('customUrl').value = '';
+                document.getElementById('customSubject').value = '';
+                document.getElementById('customTags').value = '';
+                document.getElementById('customNote').value = '';
+            }
         });
 
         document.getElementById('exportBookmarksBtn').addEventListener('click', () => {
-            const lines = bookmarks.map((bookmark) => `"${String(bookmark.title).replace(/"/g, '""')}","${bookmark.type}","${bookmark.language || 'Custom'}","${String(bookmark.url).replace(/"/g, '""')}"`);
-            StudyQuest.downloadText(`studyquest-resources-${StudyQuest.todayKey()}.csv`, ['Title,Type,Language,URL', ...lines].join('\n'), 'text/csv');
+            const rows = buildSharePack().resources;
+            const lines = rows.map((bookmark) => [
+                bookmark.title,
+                bookmark.type,
+                bookmark.language,
+                bookmark.subject,
+                bookmark.trust,
+                bookmark.tags.join('|'),
+                bookmark.note,
+                bookmark.url
+            ].map((value) => `"${String(value || '').replace(/"/g, '""')}"`).join(','));
+            StudyQuest.downloadText(`studyquest-resources-${StudyQuest.todayKey()}.csv`, ['Title,Type,Language,Subject,Trust,Tags,Note,URL', ...lines].join('\n'), 'text/csv');
+        });
+
+        document.getElementById('exportSharePackBtn').addEventListener('click', () => {
+            StudyQuest.downloadText(`studyquest-resource-share-pack-${StudyQuest.todayKey()}.json`, JSON.stringify(buildSharePack(), null, 2), 'application/json');
+        });
+
+        document.getElementById('copySharePackBtn').addEventListener('click', async () => {
+            if (!navigator.clipboard) {
+                setStatus('Clipboard access is unavailable in this browser.', 'error');
+                return;
+            }
+            await navigator.clipboard.writeText(JSON.stringify(buildSharePack(), null, 2));
+            setStatus('Resource share pack copied.');
+        });
+
+        document.getElementById('importSharePackBtn').addEventListener('click', async () => {
+            const [file] = document.getElementById('importSharePackFile').files || [];
+            if (!file) {
+                setStatus('Choose a StudyQuest resource JSON file first.', 'error');
+                return;
+            }
+            try {
+                const payload = JSON.parse(await file.text());
+                const incoming = Array.isArray(payload.resources) ? payload.resources : Array.isArray(payload) ? payload : [];
+                let added = 0;
+                incoming.map(normalizeBookmark).filter(Boolean).forEach((bookmark) => {
+                    if (!bookmarks.some((item) => validateUrl(item.url || '') === bookmark.url)) {
+                        bookmarks.unshift({ ...bookmark, id: StudyQuest.newId(), savedAt: new Date().toISOString() });
+                        added += 1;
+                    }
+                });
+                StudyQuest.saveResourceBookmarks(bookmarks);
+                renderBookmarks();
+                setStatus(`${added} resource${added === 1 ? '' : 's'} imported.`);
+            } catch (error) {
+                setStatus('Could not import that resource file.', 'error');
+            }
         });
 
         languageSelect.addEventListener('change', () => renderResources(languageSelect.value));
         resourceSearch.addEventListener('input', () => renderResources(languageSelect.value));
+        resourceTypeFilter.addEventListener('change', () => renderResources(languageSelect.value));
+        bookmarkSearch.addEventListener('input', renderBookmarks);
+        bookmarkTrustFilter.addEventListener('change', renderBookmarks);
         renderResources(languageSelect.value || 'English');
         renderBookmarks();
     </script>

@@ -61,6 +61,7 @@ Copy `.env.example` to `.env` for local backend configuration. Never commit real
 - `passport.html`: redacted Credential Passport with verified execution metrics, subject signals, raw output logs, and markdown export.
 - `reminders.html`: notification center for task deadlines, timetable blocks, test alerts, and streak reminders.
 - `ocr.html`: in-app browser OCR with image preview, optional cleanup, confidence, history, and handoff to Notes, Summarizer, or AI Quest.
+- `source.html`: curated resource library with filters, trust labels, tags, CSV export, and JSON share-pack import/export.
 - `video-quest.html`: YouTube milestone hard-pause checkpoints with terminal/scratchpad evaluation panels.
 
 ## GitHub Pages

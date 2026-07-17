@@ -122,6 +122,54 @@ test("Settings exposes first-party API sync controls", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Push data" })).toBeVisible();
 });
 
+test("Sources manage resource metadata and share-pack imports", async ({ page }) => {
+  await page.goto("/source.html");
+  await expect(page.getByRole("heading", { name: "Study sources" })).toBeVisible();
+
+  await page.locator("#resourceSearch").fill("NCERT");
+  await page.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.locator("#bookmarksList")).toContainText("NCERT");
+  await expect(page.locator("#bookmarksList")).toContainText("Curated");
+
+  await page.locator("#customTitle").fill("Algebra drill sheet");
+  await page.locator("#customUrl").fill("https://example.com/algebra");
+  await page.locator("#customSubject").fill("Math");
+  await page.locator("#customTags").fill("algebra, practice");
+  await page.locator("#customTrust").selectOption("Teacher verified");
+  await page.locator("#customNote").fill("Use before Friday's quiz.");
+  await page.getByRole("button", { name: "Save resource" }).click();
+  await expect(page.locator("#bookmarksList")).toContainText("Algebra drill sheet");
+  await expect(page.locator("#bookmarksList")).toContainText("Teacher verified");
+
+  await page.locator("#bookmarkTrustFilter").selectOption("Teacher verified");
+  await expect(page.locator("#bookmarksList")).toContainText("Algebra drill sheet");
+  await expect(page.locator("#bookmarksList")).not.toContainText("NCERT");
+
+  await page.locator("#importSharePackFile").setInputFiles({
+    name: "resources.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      resources: [{
+        title: "Chemistry equations pack",
+        url: "https://example.com/chemistry",
+        type: "Text",
+        language: "Custom",
+        subject: "Chemistry",
+        tags: ["chemistry", "equations"],
+        trust: "Student shared",
+        note: "Shared by study group."
+      }]
+    }))
+  });
+  await page.locator("#bookmarkTrustFilter").selectOption("all");
+  await page.getByRole("button", { name: "Import JSON" }).click();
+  await expect(page.locator("#bookmarksList")).toContainText("Chemistry equations pack");
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("studyquest.resourceBookmarks")));
+  expect(saved.length).toBeGreaterThanOrEqual(3);
+  expect(saved.some((resource) => resource.tags?.includes("practice"))).toBe(true);
+});
+
 test("Credential Passport renders redacted export text", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("studyquest.profile", JSON.stringify({
