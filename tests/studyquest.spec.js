@@ -122,6 +122,37 @@ test("Settings exposes first-party API sync controls", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Push data" })).toBeVisible();
 });
 
+test("Settings exposes install and offline PWA controls", async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      Object.defineProperty(window, "caches", {
+        configurable: true,
+        value: {
+          open: async () => ({
+            addAll: async (assets) => {
+              window.__studyQuestCachedAssets = assets;
+            }
+          })
+        }
+      });
+    } catch (error) {
+      window.__studyQuestCachedAssets = [];
+    }
+  });
+
+  await page.goto("/settings.html");
+  await expect(page.getByRole("heading", { name: "Install and offline mode" })).toBeVisible();
+  await expect(page.locator("#pwaOnlineState")).toHaveText(/Online|Offline/);
+
+  await page.getByRole("button", { name: "Install app" }).click();
+  await expect(page.locator("#pwaStatus")).toContainText("Use your browser menu");
+
+  await page.getByRole("button", { name: "Refresh offline files" }).click();
+  await expect(page.locator("#pwaStatus")).toContainText("StudyQuest files refreshed");
+  const cachedCount = await page.evaluate(() => window.__studyQuestCachedAssets?.length || 0);
+  expect(cachedCount).toBeGreaterThan(10);
+});
+
 test("Sources manage resource metadata and share-pack imports", async ({ page }) => {
   await page.goto("/source.html");
   await expect(page.getByRole("heading", { name: "Study sources" })).toBeVisible();

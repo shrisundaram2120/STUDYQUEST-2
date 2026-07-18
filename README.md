@@ -2,6 +2,8 @@
 
 StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, browser reminders, redacted Credential Passport exports, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
 
+The app is installable as a mobile-friendly PWA and includes Settings controls for app install status and refreshing offline files.
+
 ## Run Locally
 
 ```bash

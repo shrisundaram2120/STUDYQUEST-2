@@ -64,6 +64,44 @@ const StudyQuest = (() => {
     const leagueDivisions = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Grandmaster"];
 
     let notificationTimers = [];
+    let deferredInstallPrompt = null;
+
+    const offlineAssets = [
+        "./",
+        "./index.html",
+        "./home.html",
+        "./tasks.html",
+        "./notes.html",
+        "./ttgen.html",
+        "./flashcards.html",
+        "./exams.html",
+        "./progress.html",
+        "./skill-tree.html",
+        "./passport.html",
+        "./reminders.html",
+        "./source.html",
+        "./aiquest.html",
+        "./video-quest.html",
+        "./ocr.html",
+        "./summarizer.html",
+        "./chat.html",
+        "./settings.html",
+        "./studyquest.css",
+        "./studyquest.js",
+        "./manifest.webmanifest",
+        "./studyquest-high-resolution-logo.png",
+        "./studyquest-high-resolution-logo-transparent.png",
+        "./studyquest-high-resolution-logo-black-transparent.png"
+    ];
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+    });
+
+    window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = null;
+    });
 
     const defaultSkillNodes = [
         {
@@ -1616,6 +1654,53 @@ const StudyQuest = (() => {
         navigator.serviceWorker.register("service-worker.js").catch(() => {});
     }
 
+    function isStandaloneApp() {
+        return Boolean(
+            window.matchMedia?.("(display-mode: standalone)")?.matches ||
+            window.navigator.standalone
+        );
+    }
+
+    function getPwaStatus() {
+        return {
+            online: navigator.onLine,
+            standalone: isStandaloneApp(),
+            canInstall: Boolean(deferredInstallPrompt),
+            serviceWorkerSupported: "serviceWorker" in navigator,
+            serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+            cacheSupported: "caches" in window
+        };
+    }
+
+    async function promptInstallApp() {
+        if (isStandaloneApp()) {
+            return { status: "installed", message: "StudyQuest is already running as an installed app." };
+        }
+        if (!deferredInstallPrompt) {
+            return { status: "unavailable", message: "Use your browser menu to install StudyQuest on this device." };
+        }
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return {
+            status: choice?.outcome || "dismissed",
+            message: choice?.outcome === "accepted" ? "StudyQuest install started." : "Install prompt dismissed."
+        };
+    }
+
+    async function refreshOfflineCache() {
+        if (!("caches" in window)) {
+            return { ok: false, count: 0, message: "Offline cache is not available in this browser." };
+        }
+        const cache = await caches.open("studyquest-user-offline-v1");
+        await cache.addAll(offlineAssets);
+        if ("serviceWorker" in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            await registration?.update?.();
+        }
+        return { ok: true, count: offlineAssets.length, message: `${offlineAssets.length} StudyQuest files refreshed for offline use.` };
+    }
+
     function renderProgressBar(percent) {
         const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
         return `<div class="progress-track"><span style="width:${safePercent}%"></span></div>`;
@@ -1747,6 +1832,9 @@ const StudyQuest = (() => {
         importData,
         resetStudyData,
         resetAllData,
+        getPwaStatus,
+        promptInstallApp,
+        refreshOfflineCache,
         renderProgressBar
     };
 })();

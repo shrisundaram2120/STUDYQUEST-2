@@ -156,6 +156,36 @@
                 <article class="card">
                     <div class="card-header">
                         <div>
+                            <p class="eyebrow">App</p>
+                            <h3 style="margin-bottom: 8px;">Install and offline mode</h3>
+                        </div>
+                    </div>
+                    <div class="stack">
+                        <div class="metric-row">
+                            <div class="metric">
+                                <strong id="pwaInstallState">Browser</strong>
+                                <span class="muted">Install state</span>
+                            </div>
+                            <div class="metric">
+                                <strong id="pwaOnlineState">Online</strong>
+                                <span class="muted">Connection</span>
+                            </div>
+                            <div class="metric">
+                                <strong id="pwaWorkerState">Ready</strong>
+                                <span class="muted">Offline engine</span>
+                            </div>
+                        </div>
+                        <div class="button-row">
+                            <button class="btn btn-primary" id="installAppBtn" type="button">Install app</button>
+                            <button class="btn btn-secondary" id="refreshOfflineBtn" type="button">Refresh offline files</button>
+                        </div>
+                        <div class="status-line" id="pwaStatus"></div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <div class="card-header">
+                        <div>
                             <p class="eyebrow">Preferences</p>
                             <h3 style="margin-bottom: 8px;">Study defaults</h3>
                         </div>
@@ -462,6 +492,33 @@
             document.getElementById('notificationStatus').textContent = sent ? 'Test notification sent.' : 'Enable browser notification permission first.';
         });
 
+        function renderPwaStatus(message = '') {
+            const status = StudyQuest.getPwaStatus();
+            document.getElementById('pwaInstallState').textContent = status.standalone ? 'Installed' : status.canInstall ? 'Ready' : 'Browser';
+            document.getElementById('pwaOnlineState').textContent = status.online ? 'Online' : 'Offline';
+            document.getElementById('pwaWorkerState').textContent = status.serviceWorkerSupported ? status.serviceWorkerControlled ? 'Active' : 'Ready' : 'None';
+            document.getElementById('pwaStatus').textContent = message || (status.cacheSupported ? 'Offline storage is available on this browser.' : 'Offline storage is unavailable on this browser.');
+        }
+
+        document.getElementById('installAppBtn').addEventListener('click', async () => {
+            const result = await StudyQuest.promptInstallApp();
+            renderPwaStatus(result.message);
+        });
+
+        document.getElementById('refreshOfflineBtn').addEventListener('click', async () => {
+            document.getElementById('pwaStatus').textContent = 'Refreshing offline files...';
+            try {
+                const result = await StudyQuest.refreshOfflineCache();
+                renderPwaStatus(result.message);
+            } catch (error) {
+                document.getElementById('pwaStatus').textContent = 'Could not refresh offline files.';
+                document.getElementById('pwaStatus').className = 'status-line error';
+            }
+        });
+
+        window.addEventListener('online', () => renderPwaStatus('StudyQuest is back online.'));
+        window.addEventListener('offline', () => renderPwaStatus('StudyQuest is offline; cached pages stay available.'));
+
         document.getElementById('exportDataBtn').addEventListener('click', StudyQuest.exportData);
 
         document.getElementById('importDataBtn').addEventListener('click', async () => {
@@ -498,6 +555,7 @@
         });
 
         renderThemeChoice();
+        renderPwaStatus();
     </script>
 </body>
 </html>
