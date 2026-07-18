@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Search</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('remembering-digital-art-landscape-4k_1540751311.jpg.webp');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Global search</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a href="passport.html">Passport</a>
+                <a href="reminders.html">Reminders</a>
+                <a class="active" href="search.html">Search</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Global search</h2>
+                    <p>Find anything you saved in StudyQuest: tasks, notes, cards, exams, OCR captures, resources, and activity logs.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="dashboard-grid">
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Search</p>
+                            <h3 style="margin-bottom: 8px;">StudyQuest index</h3>
+                        </div>
+                        <span class="pill" id="indexCount">0 indexed</span>
+                    </div>
+                    <div class="inline-form">
+                        <input class="field" id="globalSearchInput" type="search" placeholder="Search photosynthesis, algebra, flashcards, due tasks...">
+                        <select class="select" id="globalSearchType">
+                            <option value="all">All types</option>
+                            <option value="Task">Tasks</option>
+                            <option value="Note">Notes</option>
+                            <option value="Flashcard">Flashcards</option>
+                            <option value="Exam">Exams</option>
+                            <option value="Resource">Resources</option>
+                            <option value="OCR">OCR captures</option>
+                            <option value="Activity">Activity</option>
+                        </select>
+                        <select class="select" id="globalSearchSort">
+                            <option value="relevance">Sort by relevance</option>
+                            <option value="recent">Sort by recent</option>
+                            <option value="type">Sort by type</option>
+                        </select>
+                    </div>
+                </article>
+
+                <article class="card side-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Facets</p>
+                            <h3 style="margin-bottom: 8px;">Result mix</h3>
+                        </div>
+                    </div>
+                    <div class="search-facets" id="searchFacets"></div>
+                </article>
+
+                <article class="card hero-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Results</p>
+                            <h3 style="margin-bottom: 8px;">Matching study material</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="sendResultsToAiBtn" type="button">Send top results to AI Quest</button>
+                    </div>
+                    <div class="search-results" id="searchResults"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const searchInput = document.getElementById('globalSearchInput');
+        const typeFilter = document.getElementById('globalSearchType');
+        const sortSelect = document.getElementById('globalSearchSort');
+        const resultsEl = document.getElementById('searchResults');
+        const facetsEl = document.getElementById('searchFacets');
+        const indexCount = document.getElementById('indexCount');
+        let currentResults = [];
+
+        function excerpt(value, query = '') {
+            const text = String(value || '').replace(/\s+/g, ' ').trim();
+            if (!text) return '';
+            const lower = text.toLowerCase();
+            const needle = query.toLowerCase();
+            const position = needle ? lower.indexOf(needle) : -1;
+            const start = position > 45 ? position - 45 : 0;
+            return `${start ? '...' : ''}${text.slice(start, start + 190)}${text.length > start + 190 ? '...' : ''}`;
+        }
+
+        function buildSearchIndex() {
+            const rows = [];
+            StudyQuest.getTasks().forEach((task) => rows.push({
+                id: `task:${task.id}`,
+                type: 'Task',
+                title: task.title || 'Untitled task',
+                body: [task.subject, task.priority, task.deadline, task.notes].filter(Boolean).join(' | '),
+                href: 'tasks.html',
+                updatedAt: task.completedAt || task.createdAt || task.deadline || '',
+                meta: task.done ? 'Completed task' : task.deadline ? `Due ${task.deadline}` : 'Open task'
+            }));
+            StudyQuest.getNotes().forEach((note) => rows.push({
+                id: `note:${note.id}`,
+                type: 'Note',
+                title: note.name || 'Untitled note',
+                body: note.content || '',
+                href: 'notes.html',
+                updatedAt: note.updatedAt || '',
+                meta: StudyQuest.pluralize(StudyQuest.countWords(note.content), 'word')
+            }));
+            StudyQuest.getFlashcards().forEach((card) => rows.push({
+                id: `flashcard:${card.id}`,
+                type: 'Flashcard',
+                title: card.front || 'Flashcard',
+                body: [card.back, card.deck].filter(Boolean).join(' | '),
+                href: 'flashcards.html',
+                updatedAt: card.dueAt || '',
+                meta: card.deck || 'Flashcard'
+            }));
+            StudyQuest.getExams().forEach((exam) => rows.push({
+                id: `exam:${exam.id}`,
+                type: 'Exam',
+                title: exam.title || 'Exam',
+                body: [exam.subject, exam.date, ...(exam.topics || []).map((topic) => topic.name)].filter(Boolean).join(' | '),
+                href: 'exams.html',
+                updatedAt: exam.date || '',
+                meta: exam.date ? `${StudyQuest.daysUntil(exam.date) ?? '?'} days` : 'Exam'
+            }));
+            StudyQuest.getResourceBookmarks().forEach((resource) => rows.push({
+                id: `resource:${resource.id}`,
+                type: 'Resource',
+                title: resource.title || resource.url || 'Resource',
+                body: [resource.url, resource.type, resource.language, resource.subject, resource.trust, ...(resource.tags || []), resource.note].filter(Boolean).join(' | '),
+                href: 'source.html',
+                updatedAt: resource.savedAt || '',
+                meta: resource.trust || resource.type || 'Resource'
+            }));
+            StudyQuest.getOcrHistory().forEach((entry) => rows.push({
+                id: `ocr:${entry.id}`,
+                type: 'OCR',
+                title: entry.title || 'OCR capture',
+                body: entry.text || '',
+                href: 'ocr.html',
+                updatedAt: entry.createdAt || '',
+                meta: `${entry.confidence || 0}% confidence`
+            }));
+            StudyQuest.getActivityEvents().forEach((event) => rows.push({
+                id: `activity:${event.id}`,
+                type: 'Activity',
+                title: event.label || event.type || 'Activity',
+                body: [event.type, JSON.stringify(event.meta || {})].join(' | '),
+                href: 'progress.html',
+                updatedAt: event.createdAt || '',
+                meta: event.type || 'Activity'
+            }));
+            return rows;
+        }
+
+        function scoreRow(row, query) {
+            if (!query) return 1;
+            const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+            const title = String(row.title || '').toLowerCase();
+            const body = String(row.body || '').toLowerCase();
+            return terms.reduce((score, term) => {
+                if (title.includes(term)) return score + 6;
+                if (body.includes(term)) return score + 2;
+                return score;
+            }, 0);
+        }
+
+        function renderFacets(rows) {
+            const counts = rows.reduce((acc, row) => {
+                acc[row.type] = (acc[row.type] || 0) + 1;
+                return acc;
+            }, {});
+            facetsEl.innerHTML = ['Task', 'Note', 'Flashcard', 'Exam', 'Resource', 'OCR', 'Activity'].map((type) => `
+                <button class="facet-button ${typeFilter.value === type ? 'active' : ''}" type="button" data-facet="${type}">
+                    <strong>${e(type)}</strong>
+                    <span>${counts[type] || 0}</span>
+                </button>
+            `).join('');
+            facetsEl.querySelectorAll('[data-facet]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    typeFilter.value = typeFilter.value === button.dataset.facet ? 'all' : button.dataset.facet;
+                    renderSearch();
+                });
+            });
+        }
+
+        function renderSearch() {
+            const index = buildSearchIndex();
+            const query = searchInput.value.trim();
+            const selectedType = typeFilter.value;
+            indexCount.textContent = `${index.length} indexed`;
+            renderFacets(index);
+
+            currentResults = index
+                .map((row) => ({ ...row, score: scoreRow(row, query) }))
+                .filter((row) => row.score > 0)
+                .filter((row) => selectedType === 'all' || row.type === selectedType);
+
+            if (sortSelect.value === 'recent') {
+                currentResults.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) || b.score - a.score);
+            } else if (sortSelect.value === 'type') {
+                currentResults.sort((a, b) => a.type.localeCompare(b.type) || b.score - a.score);
+            } else {
+                currentResults.sort((a, b) => b.score - a.score || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+            }
+
+            if (!currentResults.length) {
+                resultsEl.innerHTML = `
+                    <div class="empty-state">
+                        <strong>No matches yet.</strong>
+                        <p class="muted">Try a subject, chapter, task title, resource tag, or OCR phrase.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsEl.innerHTML = currentResults.slice(0, 30).map((row) => `
+                <article class="search-result-card">
+                    <div>
+                        <div class="task-topline">
+                            <strong>${e(row.title)}</strong>
+                            <span class="pill">${e(row.type)}</span>
+                        </div>
+                        <p class="muted">${e(excerpt(row.body, query))}</p>
+                        <div class="metadata-row">
+                            <span class="urgency-badge">${e(row.meta)}</span>
+                            ${row.updatedAt ? `<span class="pill">${e(row.updatedAt.slice(0, 10))}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="toolbar">
+                        <a class="btn btn-secondary" href="${e(row.href)}">Open</a>
+                        <button class="btn btn-ghost" type="button" data-ai-result="${e(row.id)}">AI Quest</button>
+                    </div>
+                </article>
+            `).join('');
+            resultsEl.querySelectorAll('[data-ai-result]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const result = currentResults.find((row) => row.id === button.dataset.aiResult);
+                    if (!result) return;
+                    StudyQuest.saveAiDraft({
+                        title: result.title,
+                        text: `${result.title}\n\n${result.body}`,
+                        source: 'global-search'
+                    });
+                    window.location.href = 'aiquest.html';
+                });
+            });
+        }
+
+        document.getElementById('sendResultsToAiBtn').addEventListener('click', () => {
+            const topResults = currentResults.slice(0, 5);
+            if (!topResults.length) return;
+            StudyQuest.saveAiDraft({
+                title: 'StudyQuest search results',
+                text: topResults.map((row) => `[${row.type}] ${row.title}\n${row.body}`).join('\n\n'),
+                source: 'global-search'
+            });
+            window.location.href = 'aiquest.html';
+        });
+
+        [searchInput, typeFilter, sortSelect].forEach((control) => control.addEventListener('input', renderSearch));
+        typeFilter.addEventListener('change', renderSearch);
+        sortSelect.addEventListener('change', renderSearch);
+        renderSearch();
+    </script>
+</body>
+</html>

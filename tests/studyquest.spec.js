@@ -29,6 +29,7 @@ test("dashboard exposes the upgraded study surfaces", async ({ page }) => {
   await expect(page.locator('a[href="skill-tree.html"]')).toHaveCount(2);
   await expect(page.locator('a[href="passport.html"]')).toHaveCount(2);
   await expect(page.locator('a[href="reminders.html"]')).toHaveCount(2);
+  await expect(page.locator('a[href="search.html"]')).toHaveCount(1);
   await expect(page.locator("#weeklyFocusChart .mini-bar")).toHaveCount(7);
 });
 
@@ -199,6 +200,44 @@ test("Sources manage resource metadata and share-pack imports", async ({ page })
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("studyquest.resourceBookmarks")));
   expect(saved.length).toBeGreaterThanOrEqual(3);
   expect(saved.some((resource) => resource.tags?.includes("practice"))).toBe(true);
+});
+
+test("Global search finds study data and sends results to AI Quest", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("studyquest.tasks", JSON.stringify([
+      { id: "task-search-1", title: "Photosynthesis diagrams", subject: "Science", notes: "Revise chloroplast labels", deadline: "2026-07-30", done: false }
+    ]));
+    localStorage.setItem("studyquest.notes", JSON.stringify([
+      { id: "note-search-1", name: "Biology notes", content: "Photosynthesis converts light energy into glucose.", updatedAt: "2026-07-17T10:00:00.000Z" }
+    ]));
+    localStorage.setItem("studyquest.flashcards", JSON.stringify([
+      { id: "card-search-1", deck: "Science", front: "Photosynthesis equation", back: "Carbon dioxide plus water makes glucose and oxygen." }
+    ]));
+    localStorage.setItem("studyquest.resourceBookmarks", JSON.stringify([
+      { id: "resource-search-1", title: "Photosynthesis animation", url: "https://example.com/photo", type: "Video", language: "English", subject: "Science", trust: "Teacher verified", tags: ["biology"] }
+    ]));
+    localStorage.setItem("studyquest.ocrHistory", JSON.stringify([
+      { id: "ocr-search-1", title: "Worksheet capture", text: "Photosynthesis worksheet from class", confidence: 91, createdAt: "2026-07-17T11:00:00.000Z" }
+    ]));
+  });
+
+  await page.goto("/search.html");
+  await expect(page.getByRole("heading", { name: "Global search" })).toBeVisible();
+  await expect(page.locator("#indexCount")).toContainText("indexed");
+
+  await page.locator("#globalSearchInput").fill("photosynthesis");
+  await expect(page.locator("#searchResults")).toContainText("Photosynthesis diagrams");
+  await expect(page.locator("#searchResults")).toContainText("Biology notes");
+  await expect(page.locator("#searchResults")).toContainText("Photosynthesis animation");
+
+  await page.locator("#globalSearchType").selectOption("OCR");
+  await expect(page.locator("#searchResults")).toContainText("Worksheet capture");
+  await expect(page.locator("#searchResults")).not.toContainText("Photosynthesis diagrams");
+
+  await page.getByRole("button", { name: "Send top results to AI Quest" }).click();
+  await expect(page).toHaveURL(/aiquest\.html/);
+  await expect(page.locator("#sourceTitle")).toHaveValue("StudyQuest search results");
+  await expect(page.locator("#sourceText")).toHaveValue(/Worksheet capture/);
 });
 
 test("Credential Passport renders redacted export text", async ({ page }) => {

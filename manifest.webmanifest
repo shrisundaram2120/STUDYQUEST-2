@@ -60,6 +60,11 @@
       "description": "Open task, timetable, and streak reminders"
     },
     {
+      "name": "Search",
+      "url": "search.html",
+      "description": "Search StudyQuest tasks, notes, resources, cards, exams, and OCR captures"
+    },
+    {
       "name": "Exam Mode",
       "url": "exams.html",
       "description": "Open exam countdowns and revision plans"

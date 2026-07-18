@@ -869,6 +869,48 @@ button {
     background: var(--accent-soft);
 }
 
+.search-results,
+.search-facets {
+    display: grid;
+    gap: 11px;
+}
+
+.search-result-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 15px;
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+}
+
+.search-result-card p {
+    margin: 8px 0 0;
+}
+
+.facet-button {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    min-height: 46px;
+    padding: 12px 13px;
+    border-radius: var(--radius);
+    color: var(--ink);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    cursor: pointer;
+}
+
+.facet-button.active,
+.facet-button:hover {
+    border-color: rgba(185, 93, 53, 0.34);
+    background: var(--accent-soft);
+}
+
 .table-shell {
     overflow-x: auto;
 }
@@ -1354,12 +1396,14 @@ button {
     .stat-card,
     .split-actions,
     .heatmap-row,
-    .reminder-card {
+    .reminder-card,
+    .search-result-card {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .reminder-card {
+    .reminder-card,
+    .search-result-card {
         display: grid;
         grid-template-columns: 1fr;
     }

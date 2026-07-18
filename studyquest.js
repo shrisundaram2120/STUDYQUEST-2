@@ -79,6 +79,7 @@ const StudyQuest = (() => {
         "./skill-tree.html",
         "./passport.html",
         "./reminders.html",
+        "./search.html",
         "./source.html",
         "./aiquest.html",
         "./video-quest.html",
