@@ -152,7 +152,6 @@
         const typeFilter = document.getElementById('feedbackTypeFilter');
         const ratingFilter = document.getElementById('feedbackRatingFilter');
         const searchInput = document.getElementById('feedbackSearch');
-        const adminSessionKey = 'studyquest.feedbackAdminSession';
         const adminCredentials = {
             username: 'sundar2120',
             passwordHash: 'a970b1eb8ef95b7efaf616cf9eeecf664dc707ae964145fc3d9cae706be82079'
@@ -186,13 +185,11 @@
                 loginStatus.className = 'status-line error';
                 return;
             }
-            sessionStorage.setItem(adminSessionKey, 'true');
             loginStatus.textContent = '';
             setAdminUnlocked(true);
         });
 
         document.getElementById('adminLogoutBtn').addEventListener('click', () => {
-            sessionStorage.removeItem(adminSessionKey);
             document.getElementById('adminPassword').value = '';
             setAdminUnlocked(false);
             document.getElementById('adminUsername').focus();
@@ -325,7 +322,7 @@
             control.addEventListener('change', renderFeedback);
         });
 
-        setAdminUnlocked(sessionStorage.getItem(adminSessionKey) === 'true');
+        setAdminUnlocked(false);
     </script>
 </body>
 </html>

@@ -102,6 +102,10 @@ test("Feedback admin renders chronological local feedback", async ({ page }) => 
   await expect(page.locator("#feedbackAdminList")).toContainText("Newest feedback");
   await expect(page.locator("#feedbackAdminList")).not.toContainText("Older feedback");
   await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Admin login" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Feedback admin", exact: true })).toBeHidden();
 });
 
 test("flashcard review updates spaced repetition state", async ({ page }) => {

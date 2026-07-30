@@ -1,4 +1,4 @@
-const CACHE_NAME = "studyquest-v11";
+const CACHE_NAME = "studyquest-v12";
 const CORE_ASSETS = [
     "./",
     "./index.html",
@@ -52,9 +52,22 @@ self.addEventListener("fetch", (event) => {
 
     const requestUrl = new URL(event.request.url);
     const isSameOrigin = requestUrl.origin === self.location.origin;
+    const acceptsHtml = event.request.headers.get("accept")?.includes("text/html");
+    const isPageRequest = event.request.mode === "navigate" || acceptsHtml;
 
     if (!isSameOrigin || requestUrl.pathname.startsWith("/api/")) {
         event.respondWith(fetch(event.request));
+        return;
+    }
+
+    if (isPageRequest) {
+        event.respondWith(
+            fetch(event.request).then((response) => {
+                const copy = response.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                return response;
+            }).catch(() => caches.match(event.request).then((cached) => cached || caches.match("./home.html")))
+        );
         return;
     }
 
