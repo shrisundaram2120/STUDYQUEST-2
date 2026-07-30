@@ -39,6 +39,20 @@ def main() -> None:
     assert evaluation.status_code == 200, evaluation.text
     assert evaluation.json()["source"] in {"local_socratic_fallback", "gemini", "mongo_vector_cache"}
 
+    feedback = client.post(
+        "/api/v1/feedback",
+        json={
+            "type": "General Feedback",
+            "rating": 5,
+            "message": "Smoke feedback from the StudyQuest API test.",
+        },
+    )
+    assert feedback.status_code == 200, feedback.text
+    assert feedback.json()["ok"] is True
+
+    admin_feedback = client.get("/api/v1/feedback")
+    assert admin_feedback.status_code in {403, 503}, admin_feedback.text
+
     passport = client.get("/api/v1/passports/smoke-user")
     assert passport.status_code == 401, passport.text
 

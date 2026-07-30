@@ -1,6 +1,6 @@
 # StudyQuest
 
-StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, browser reminders, redacted Credential Passport exports, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
+StudyQuest is a static study planner PWA with tasks, notes, focus sessions, timetable planning, OCR, spaced-repetition flashcards, exam mode, progress analytics, an RPG skill tree, browser reminders, feedback capture, redacted Credential Passport exports, Video Quest checkpoints, cloud sync, and an optional server-side AI endpoint.
 
 The app is installable as a mobile-friendly PWA and includes Settings controls for app install status and refreshing offline files.
 
@@ -42,7 +42,9 @@ python -m uvicorn studyquest_api:app --host 0.0.0.0 --port 8000
 
 Use `video-quest.html` to load lessons from `/api/v1/video-lessons/{lesson_id}`, run 30-minute dungeon sprints, and submit milestone solutions to `/api/v1/quests/evaluate`.
 
-The API keeps free-tier pressure low with in-process rate limits for auth, sprints, and quest evaluation, startup-created MongoDB indexes, signed bearer tokens, owner/admin checks for Credential Passports, and a configurable sync payload cap.
+The API keeps free-tier pressure low with in-process rate limits for auth, sprints, quest evaluation, and feedback, startup-created MongoDB indexes, signed bearer tokens, owner/admin checks for Credential Passports, admin-only feedback review, and a configurable sync payload cap.
+
+Feedback submissions from the static app are saved locally first and then sent to `/api/v1/feedback` when a StudyQuest API URL is configured. The admin inbox can load MongoDB-backed feedback with `STUDYQUEST_ADMIN_KEY`.
 
 The repo also includes `Procfile`, `runtime.txt`, and `render.yaml` for deploying the single FastAPI app to a free Python host such as Render. Set the secrets from `.env.example`, then paste the deployed API URL into StudyQuest Settings.
 
@@ -62,6 +64,7 @@ Copy `.env.example` to `.env` for local backend configuration. Never commit real
 - `skill-tree.html`: RPG learning path with prerequisite node IDs, XP, badges, rank points, and league progression.
 - `passport.html`: redacted Credential Passport with verified execution metrics, subject signals, raw output logs, and markdown export.
 - `reminders.html`: notification center for task deadlines, timetable blocks, test alerts, and streak reminders.
+- `feedback-admin.html`: chronological feedback inbox with local submissions, optional backend loading, filters, and CSV export.
 - `search.html`: global local search across tasks, notes, flashcards, exams, resources, OCR captures, and activity logs.
 - `ocr.html`: in-app browser OCR with image preview, optional cleanup, confidence, history, and handoff to Notes, Summarizer, or AI Quest.
 - `source.html`: curated resource library with filters, trust labels, tags, CSV export, and JSON share-pack import/export.
@@ -79,4 +82,4 @@ The backend cannot run on GitHub Pages because Pages is static hosting. Deploy `
 npm test
 ```
 
-The Playwright suite checks dashboard navigation, flashcard scheduling, exam planning, progress/skill/passport pages, Video Quest, and the AI fallback path. GitHub Actions runs JavaScript syntax checks, Python compile/import checks, dependency checks, API smoke tests, and Playwright.
+The Playwright suite checks dashboard navigation, feedback capture/admin review, flashcard scheduling, exam planning, progress/skill/passport pages, Video Quest, and the AI fallback path. GitHub Actions runs JavaScript syntax checks, Python compile/import checks, dependency checks, API smoke tests, and Playwright.

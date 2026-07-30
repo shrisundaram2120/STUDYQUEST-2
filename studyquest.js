@@ -14,6 +14,7 @@ const StudyQuest = (() => {
         exams: "studyquest.exams",
         skillProgress: "studyquest.skillProgress",
         activityEvents: "studyquest.activityEvents",
+        feedback: "studyquest.feedback",
         notificationSettings: "studyquest.notificationSettings",
         notificationLog: "studyquest.notificationLog",
         cloudConfig: "studyquest.cloudConfig",
@@ -62,6 +63,7 @@ const StudyQuest = (() => {
     };
 
     const leagueDivisions = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Grandmaster"];
+    const feedbackTypes = ["Bug Report", "Feature Request", "General Feedback", "UI/UX Suggestion"];
 
     let notificationTimers = [];
     let deferredInstallPrompt = null;
@@ -80,6 +82,7 @@ const StudyQuest = (() => {
         "./passport.html",
         "./reminders.html",
         "./search.html",
+        "./feedback-admin.html",
         "./source.html",
         "./aiquest.html",
         "./video-quest.html",
@@ -467,6 +470,109 @@ const StudyQuest = (() => {
             createdAt: new Date().toISOString()
         });
         saveActivityEvents(events);
+    }
+
+    function getFeedbackEntries() {
+        return read(storageKeys.feedback, []);
+    }
+
+    function saveFeedbackEntries(entries) {
+        write(storageKeys.feedback, entries.slice(0, 500));
+    }
+
+    function normalizeFeedbackPayload(payload = {}) {
+        return {
+            id: payload.id || newId(),
+            name: String(payload.name || "").trim(),
+            email: String(payload.email || "").trim(),
+            type: feedbackTypes.includes(payload.type) ? payload.type : "General Feedback",
+            rating: clampNumber(payload.rating, 1, 5, 5),
+            message: String(payload.message || "").trim(),
+            pageUrl: payload.pageUrl || window.location.href,
+            userAgent: payload.userAgent || navigator.userAgent,
+            createdAt: payload.createdAt || new Date().toISOString(),
+            backendId: payload.backendId || null,
+            syncStatus: payload.syncStatus || "local"
+        };
+    }
+
+    function validateFeedbackPayload(payload = {}) {
+        const normalized = normalizeFeedbackPayload(payload);
+        const errors = {};
+        if (!normalized.message) {
+            errors.message = "Feedback message is required.";
+        }
+        if (normalized.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email)) {
+            errors.email = "Enter a valid email address or leave it blank.";
+        }
+        return { ok: Object.keys(errors).length === 0, errors, feedback: normalized };
+    }
+
+    async function syncFeedbackEntry(entry) {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 2500);
+        try {
+            const response = await fetch(`${getApiEndpoint()}/api/v1/feedback`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    name: entry.name || null,
+                    email: entry.email || null,
+                    type: entry.type,
+                    rating: entry.rating,
+                    message: entry.message,
+                    page_url: entry.pageUrl,
+                    user_agent: entry.userAgent
+                })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.detail || "Feedback backend unavailable.");
+            }
+            const entries = getFeedbackEntries();
+            const next = entries.map((item) => item.id === entry.id ? {
+                ...item,
+                backendId: data.feedback_id || item.backendId,
+                syncStatus: data.stored ? "synced" : "local"
+            } : item);
+            saveFeedbackEntries(next);
+            return data;
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
+    }
+
+    function submitFeedback(payload = {}) {
+        const result = validateFeedbackPayload(payload);
+        if (!result.ok) {
+            return { ok: false, errors: result.errors, feedback: result.feedback };
+        }
+
+        const entries = getFeedbackEntries();
+        const feedback = normalizeFeedbackPayload(result.feedback);
+        saveFeedbackEntries([feedback, ...entries]);
+        logActivityEvent("feedback", `${feedback.type}: ${feedback.message.slice(0, 80)}`, { rating: feedback.rating });
+        window.setTimeout(() => syncFeedbackEntry(feedback).catch(() => {}), 0);
+        return { ok: true, errors: {}, feedback };
+    }
+
+    async function fetchBackendFeedback(adminKey) {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+        try {
+            const response = await fetch(`${getApiEndpoint()}/api/v1/feedback`, {
+                headers: { "X-StudyQuest-Admin-Key": adminKey || "" },
+                signal: controller.signal
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.detail || "Could not fetch backend feedback.");
+            }
+            return data.feedback || [];
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
     }
 
     function getSkillNodes() {
@@ -1639,6 +1745,159 @@ const StudyQuest = (() => {
         document.body.appendChild(nav);
     }
 
+    function setFeedbackRating(rating) {
+        document.querySelectorAll("[data-feedback-rating]").forEach((button) => {
+            const active = Number(button.dataset.feedbackRating) <= rating;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+        const ratingInput = document.getElementById("feedbackRating");
+        if (ratingInput) {
+            ratingInput.value = String(rating);
+        }
+    }
+
+    function openFeedbackModal() {
+        const modal = document.getElementById("feedbackModal");
+        if (!modal) {
+            return;
+        }
+        modal.classList.remove("hidden");
+        requestAnimationFrame(() => modal.classList.add("open"));
+        setFeedbackRating(Number(document.getElementById("feedbackRating")?.value || 5));
+        document.getElementById("feedbackMessage")?.focus();
+    }
+
+    function closeFeedbackModal() {
+        const modal = document.getElementById("feedbackModal");
+        if (!modal) {
+            return;
+        }
+        modal.classList.remove("open");
+        window.setTimeout(() => modal.classList.add("hidden"), 180);
+    }
+
+    function renderFeedbackModal() {
+        if (document.getElementById("feedbackModal")) {
+            return;
+        }
+        const modal = document.createElement("div");
+        modal.className = "feedback-backdrop hidden";
+        modal.id = "feedbackModal";
+        modal.setAttribute("role", "dialog");
+        modal.setAttribute("aria-modal", "true");
+        modal.setAttribute("aria-labelledby", "feedbackTitle");
+        modal.innerHTML = `
+            <form class="feedback-modal" id="feedbackForm" novalidate>
+                <div class="feedback-modal-header">
+                    <div>
+                        <p class="eyebrow">Feedback</p>
+                        <h2 id="feedbackTitle">Help improve StudyQuest</h2>
+                    </div>
+                    <button class="feedback-close" type="button" data-feedback-close aria-label="Close feedback form">&times;</button>
+                </div>
+                <div class="feedback-form-grid">
+                    <input class="field" id="feedbackName" type="text" autocomplete="name" aria-label="Name optional" placeholder="Name (optional)">
+                    <input class="field" id="feedbackEmail" type="email" autocomplete="email" aria-label="Email optional" placeholder="Email (optional)">
+                    <select class="select" id="feedbackType" aria-label="Feedback type">
+                        ${feedbackTypes.map((type) => `<option value="${escapeHTML(type)}">${escapeHTML(type)}</option>`).join("")}
+                    </select>
+                    <div class="feedback-rating" aria-label="Rating from 1 to 5 stars">
+                        ${[1, 2, 3, 4, 5].map((rating) => `<button type="button" data-feedback-rating="${rating}" aria-label="${rating} star${rating === 1 ? "" : "s"}">&#9733;</button>`).join("")}
+                        <input id="feedbackRating" type="hidden" value="5">
+                    </div>
+                </div>
+                <textarea class="textarea short" id="feedbackMessage" aria-label="Feedback message" required placeholder="What should we improve?"></textarea>
+                <div class="feedback-modal-actions">
+                    <a class="btn btn-ghost" href="feedback-admin.html">View admin page</a>
+                    <div class="button-row">
+                        <button class="btn btn-ghost" type="button" data-feedback-close>Cancel</button>
+                        <button class="btn btn-primary" id="submitFeedbackBtn" type="submit">Submit feedback</button>
+                    </div>
+                </div>
+                <div class="status-line" id="feedbackStatus" role="status"></div>
+            </form>
+        `;
+        document.body.appendChild(modal);
+
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal || event.target.closest("[data-feedback-close]")) {
+                closeFeedbackModal();
+            }
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+                closeFeedbackModal();
+            }
+        });
+        modal.querySelectorAll("[data-feedback-rating]").forEach((button) => {
+            button.addEventListener("click", () => setFeedbackRating(Number(button.dataset.feedbackRating)));
+        });
+        setFeedbackRating(5);
+
+        document.getElementById("feedbackForm").addEventListener("submit", (event) => {
+            event.preventDefault();
+            const status = document.getElementById("feedbackStatus");
+            const submitButton = document.getElementById("submitFeedbackBtn");
+            const result = submitFeedback({
+                name: document.getElementById("feedbackName").value,
+                email: document.getElementById("feedbackEmail").value,
+                type: document.getElementById("feedbackType").value,
+                rating: document.getElementById("feedbackRating").value,
+                message: document.getElementById("feedbackMessage").value
+            });
+
+            if (!result.ok) {
+                status.textContent = Object.values(result.errors)[0] || "Check the feedback form.";
+                status.className = "status-line error";
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = "Submitting...";
+            document.getElementById("feedbackForm").classList.add("is-submitting");
+            window.setTimeout(() => {
+                status.textContent = "Thank you for your feedback! Your input helps improve Study Quest.";
+                status.className = "status-line success";
+                document.getElementById("feedbackMessage").value = "";
+                document.getElementById("feedbackForm").classList.remove("is-submitting");
+                submitButton.disabled = false;
+                submitButton.textContent = "Submit feedback";
+            }, 280);
+        });
+    }
+
+    function injectFeedbackEntryPoints() {
+        document.querySelectorAll(".nav-links").forEach((nav) => {
+            if (!nav.querySelector("[data-feedback-open]")) {
+                const button = document.createElement("button");
+                button.className = "nav-feedback-button";
+                button.type = "button";
+                button.textContent = "Feedback";
+                button.setAttribute("data-feedback-open", "");
+                nav.appendChild(button);
+            }
+        });
+
+        if (!document.querySelector(".studyquest-footer")) {
+            const footer = document.createElement("footer");
+            footer.className = "studyquest-footer";
+            footer.innerHTML = `
+                <span>StudyQuest</span>
+                <button type="button" data-feedback-open>Feedback</button>
+                <a href="feedback-admin.html">Feedback admin</a>
+            `;
+            document.body.appendChild(footer);
+        }
+
+        document.querySelectorAll("[data-feedback-open]").forEach((button) => {
+            if (!button.dataset.feedbackBound) {
+                button.dataset.feedbackBound = "true";
+                button.addEventListener("click", openFeedbackModal);
+            }
+        });
+    }
+
     function resetAllData() {
         Object.values(storageKeys).forEach((key) => localStorage.removeItem(key));
     }
@@ -1711,6 +1970,8 @@ const StudyQuest = (() => {
         applyTheme();
         registerServiceWorker();
         injectMobileNav();
+        renderFeedbackModal();
+        injectFeedbackEntryPoints();
         scheduleSessionNotifications();
     }
 
@@ -1767,6 +2028,14 @@ const StudyQuest = (() => {
         getActivityEvents,
         saveActivityEvents,
         logActivityEvent,
+        feedbackTypes,
+        getFeedbackEntries,
+        saveFeedbackEntries,
+        validateFeedbackPayload,
+        submitFeedback,
+        fetchBackendFeedback,
+        openFeedbackModal,
+        closeFeedbackModal,
         getSkillNodes,
         saveSkillNodes,
         getSkillProgress,

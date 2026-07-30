@@ -65,6 +65,11 @@
       "description": "Search StudyQuest tasks, notes, resources, cards, exams, and OCR captures"
     },
     {
+      "name": "Feedback",
+      "url": "feedback-admin.html",
+      "description": "Open StudyQuest feedback and admin review"
+    },
+    {
       "name": "Exam Mode",
       "url": "exams.html",
       "description": "Open exam countdowns and revision plans"

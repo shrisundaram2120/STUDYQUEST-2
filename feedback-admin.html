@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Feedback Admin</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('digital-art-landscape-forest-lagoon-wallpaper-preview.jpg');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Feedback admin</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a href="passport.html">Passport</a>
+                <a href="reminders.html">Reminders</a>
+                <a href="search.html">Search</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>Feedback admin</h2>
+                    <p>Review StudyQuest feedback in chronological order from local submissions and the optional FastAPI backend.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="dashboard-grid">
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Controls</p>
+                            <h3 style="margin-bottom: 8px;">Feedback inbox</h3>
+                        </div>
+                        <button class="btn btn-primary" type="button" data-feedback-open>Open feedback form</button>
+                    </div>
+                    <div class="inline-form">
+                        <select class="select" id="feedbackTypeFilter">
+                            <option value="all">All feedback types</option>
+                        </select>
+                        <select class="select" id="feedbackRatingFilter">
+                            <option value="all">All ratings</option>
+                            <option value="5">5 stars</option>
+                            <option value="4">4 stars</option>
+                            <option value="3">3 stars</option>
+                            <option value="2">2 stars</option>
+                            <option value="1">1 star</option>
+                        </select>
+                        <input class="field" id="feedbackSearch" type="search" placeholder="Search feedback">
+                    </div>
+                    <div class="button-row" style="margin-top: 14px;">
+                        <input class="field" id="feedbackAdminKey" type="password" placeholder="Backend admin key">
+                        <button class="btn btn-secondary" id="loadBackendFeedbackBtn" type="button">Load backend feedback</button>
+                        <button class="btn btn-ghost" id="exportFeedbackBtn" type="button">Export CSV</button>
+                        <button class="btn btn-danger" id="clearLocalFeedbackBtn" type="button">Clear local feedback</button>
+                    </div>
+                    <div class="status-line" id="feedbackAdminStatus"></div>
+                </article>
+
+                <article class="card side-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Summary</p>
+                            <h3 style="margin-bottom: 8px;">Feedback metrics</h3>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric">
+                            <strong id="feedbackTotal">0</strong>
+                            <span class="muted">Total</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="feedbackAverage">0</strong>
+                            <span class="muted">Average rating</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="feedbackSynced">0</strong>
+                            <span class="muted">Backend rows</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card hero-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Chronological</p>
+                            <h3 style="margin-bottom: 8px;">Submitted feedback</h3>
+                        </div>
+                    </div>
+                    <div class="feedback-admin-list" id="feedbackAdminList"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+        const statusEl = document.getElementById('feedbackAdminStatus');
+        const typeFilter = document.getElementById('feedbackTypeFilter');
+        const ratingFilter = document.getElementById('feedbackRatingFilter');
+        const searchInput = document.getElementById('feedbackSearch');
+        let backendRows = [];
+
+        typeFilter.innerHTML += StudyQuest.feedbackTypes.map((type) => `<option value="${e(type)}">${e(type)}</option>`).join('');
+
+        function normalizeRow(row, source = 'local') {
+            return {
+                id: row.id || row.feedback_id || StudyQuest.newId(),
+                name: row.name || '',
+                email: row.email || '',
+                type: row.type || 'General Feedback',
+                rating: Number(row.rating || 0),
+                message: row.message || '',
+                pageUrl: row.pageUrl || row.page_url || '',
+                userAgent: row.userAgent || row.user_agent || '',
+                createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+                syncStatus: row.syncStatus || source
+            };
+        }
+
+        function getRows() {
+            const localRows = StudyQuest.getFeedbackEntries().map((row) => normalizeRow(row, row.syncStatus || 'local'));
+            const remoteRows = backendRows.map((row) => normalizeRow(row, 'backend'));
+            const seen = new Set();
+            return [...remoteRows, ...localRows]
+                .filter((row) => {
+                    const key = `${row.id}:${row.createdAt}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        }
+
+        function visibleRows() {
+            const query = searchInput.value.trim().toLowerCase();
+            return getRows().filter((row) => {
+                const haystack = `${row.name} ${row.email} ${row.type} ${row.message} ${row.pageUrl}`.toLowerCase();
+                const typeMatch = typeFilter.value === 'all' || row.type === typeFilter.value;
+                const ratingMatch = ratingFilter.value === 'all' || String(row.rating) === ratingFilter.value;
+                return typeMatch && ratingMatch && (!query || haystack.includes(query));
+            });
+        }
+
+        function renderFeedback() {
+            const rows = visibleRows();
+            const allRows = getRows();
+            const average = allRows.length
+                ? (allRows.reduce((sum, row) => sum + Number(row.rating || 0), 0) / allRows.length).toFixed(1)
+                : '0';
+            document.getElementById('feedbackTotal').textContent = String(allRows.length);
+            document.getElementById('feedbackAverage').textContent = average;
+            document.getElementById('feedbackSynced').textContent = String(backendRows.length);
+
+            if (!rows.length) {
+                document.getElementById('feedbackAdminList').innerHTML = `
+                    <div class="empty-state">
+                        <strong>No feedback found.</strong>
+                        <p class="muted">Submitted feedback will appear here in newest-first order.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('feedbackAdminList').innerHTML = rows.map((row) => `
+                <article class="feedback-admin-card">
+                    <div class="task-topline">
+                        <div>
+                            <strong>${e(row.type)}</strong>
+                            <div class="metadata-row">
+                                <span class="pill">${e(row.rating)}/5</span>
+                                <span class="pill">${e(row.syncStatus)}</span>
+                                <span class="pill">${e(new Date(row.createdAt).toLocaleString())}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p>${e(row.message)}</p>
+                    <div class="metadata-row">
+                        <span class="urgency-badge">${e(row.name || 'Anonymous')}</span>
+                        ${row.email ? `<span class="urgency-badge">${e(row.email)}</span>` : ''}
+                    </div>
+                    ${row.pageUrl ? `<p class="muted break-word">${e(row.pageUrl)}</p>` : ''}
+                </article>
+            `).join('');
+        }
+
+        document.getElementById('loadBackendFeedbackBtn').addEventListener('click', async () => {
+            const adminKey = document.getElementById('feedbackAdminKey').value;
+            if (!adminKey) {
+                statusEl.textContent = 'Enter the backend admin key first.';
+                statusEl.className = 'status-line error';
+                return;
+            }
+            statusEl.textContent = 'Loading backend feedback...';
+            try {
+                backendRows = await StudyQuest.fetchBackendFeedback(adminKey);
+                statusEl.textContent = `${backendRows.length} backend feedback row${backendRows.length === 1 ? '' : 's'} loaded.`;
+                statusEl.className = 'status-line success';
+                renderFeedback();
+            } catch (error) {
+                statusEl.textContent = error.message || 'Could not load backend feedback.';
+                statusEl.className = 'status-line error';
+            }
+        });
+
+        document.getElementById('exportFeedbackBtn').addEventListener('click', () => {
+            const rows = visibleRows();
+            const csvRows = rows.map((row) => [
+                row.createdAt,
+                row.type,
+                row.rating,
+                row.name,
+                row.email,
+                row.message,
+                row.pageUrl,
+                row.syncStatus
+            ].map((value) => `"${String(value || '').replace(/"/g, '""')}"`).join(','));
+            StudyQuest.downloadText(`studyquest-feedback-${StudyQuest.todayKey()}.csv`, ['Created,Type,Rating,Name,Email,Message,Page,Status', ...csvRows].join('\n'), 'text/csv');
+        });
+
+        document.getElementById('clearLocalFeedbackBtn').addEventListener('click', () => {
+            if (!window.confirm('Clear local feedback stored in this browser?')) return;
+            StudyQuest.saveFeedbackEntries([]);
+            statusEl.textContent = 'Local feedback cleared.';
+            renderFeedback();
+        });
+
+        [typeFilter, ratingFilter, searchInput].forEach((control) => {
+            control.addEventListener('input', renderFeedback);
+            control.addEventListener('change', renderFeedback);
+        });
+
+        renderFeedback();
+    </script>
+</body>
+</html>

@@ -33,6 +33,67 @@ test("dashboard exposes the upgraded study surfaces", async ({ page }) => {
   await expect(page.locator("#weeklyFocusChart .mini-bar")).toHaveCount(7);
 });
 
+test("Feedback modal validates and saves local submissions", async ({ page }) => {
+  await page.goto("/home.html");
+  await expect(page.locator(".nav-links [data-feedback-open]")).toHaveCount(1);
+  await expect(page.locator(".studyquest-footer [data-feedback-open]")).toHaveCount(1);
+
+  await page.locator(".studyquest-footer [data-feedback-open]").click();
+  await expect(page.locator("#feedbackModal.open")).toBeVisible();
+
+  await page.getByRole("button", { name: "Submit feedback" }).click();
+  await expect(page.locator("#feedbackStatus")).toContainText("Feedback message is required.");
+
+  await page.locator("#feedbackName").fill("Shri");
+  await page.locator("#feedbackEmail").fill("learner@example.com");
+  await page.locator("#feedbackType").selectOption("Bug Report");
+  await page.locator('[data-feedback-rating="4"]').click();
+  await page.locator("#feedbackMessage").fill("The flashcard review screen needs a clearer saved state.");
+  await page.getByRole("button", { name: "Submit feedback" }).click();
+
+  await expect(page.locator("#feedbackStatus")).toContainText("Thank you for your feedback! Your input helps improve Study Quest.");
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("studyquest.feedback")));
+  expect(saved).toHaveLength(1);
+  expect(saved[0].type).toBe("Bug Report");
+  expect(saved[0].rating).toBe(4);
+  expect(saved[0].message).toContain("flashcard review");
+});
+
+test("Feedback admin renders chronological local feedback", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("studyquest.feedback", JSON.stringify([
+      {
+        id: "feedback-old",
+        type: "General Feedback",
+        rating: 3,
+        message: "Older feedback",
+        createdAt: "2026-07-01T09:00:00.000Z",
+        syncStatus: "local"
+      },
+      {
+        id: "feedback-new",
+        type: "Feature Request",
+        rating: 5,
+        message: "Newest feedback",
+        createdAt: "2026-07-02T09:00:00.000Z",
+        syncStatus: "local"
+      }
+    ]));
+  });
+
+  await page.goto("/feedback-admin.html");
+  await expect(page.getByRole("heading", { name: "Feedback admin", exact: true })).toBeVisible();
+  await expect(page.locator("#feedbackAdminList .feedback-admin-card")).toHaveCount(2);
+
+  const inboxText = await page.locator("#feedbackAdminList").textContent();
+  expect(inboxText.indexOf("Newest feedback")).toBeLessThan(inboxText.indexOf("Older feedback"));
+
+  await page.locator("#feedbackTypeFilter").selectOption("Feature Request");
+  await expect(page.locator("#feedbackAdminList")).toContainText("Newest feedback");
+  await expect(page.locator("#feedbackAdminList")).not.toContainText("Older feedback");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+});
+
 test("flashcard review updates spaced repetition state", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("studyquest.flashcards", JSON.stringify([

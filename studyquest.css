@@ -150,7 +150,8 @@ button {
     gap: 7px;
 }
 
-.nav-links a {
+.nav-links a,
+.nav-feedback-button {
     text-decoration: none;
     padding: 12px 13px;
     border-radius: var(--radius);
@@ -158,10 +159,13 @@ button {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid transparent;
     transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    text-align: left;
+    cursor: pointer;
 }
 
 .nav-links a:hover,
-.nav-links a.active {
+.nav-links a.active,
+.nav-feedback-button:hover {
     background: rgba(255, 255, 255, 0.14);
     border-color: rgba(255, 255, 255, 0.12);
     transform: translateX(3px);
@@ -421,6 +425,161 @@ button {
 .field::placeholder,
 .textarea::placeholder {
     color: rgba(92, 104, 118, 0.8);
+}
+
+.studyquest-footer {
+    width: min(1440px, calc(100% - 282px));
+    margin-left: 282px;
+    padding: 18px 26px 28px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 249, 242, 0.88);
+    position: relative;
+    z-index: 2;
+}
+
+.studyquest-footer button,
+.studyquest-footer a {
+    min-height: 40px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff9f2;
+    text-decoration: none;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+}
+
+.feedback-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(7, 12, 20, 0.56);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.feedback-backdrop.open {
+    opacity: 1;
+}
+
+.feedback-modal {
+    width: min(680px, 100%);
+    display: grid;
+    gap: 14px;
+    padding: 22px;
+    border-radius: var(--radius);
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    box-shadow: var(--shadow);
+    transform: translateY(16px) scale(0.98);
+    animation: feedbackIn 0.2s ease forwards;
+}
+
+.feedback-modal.is-submitting {
+    animation: feedbackSubmit 0.34s ease;
+}
+
+.feedback-modal-header,
+.feedback-modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.feedback-modal-header h2 {
+    margin: 0;
+}
+
+.feedback-close {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel-strong);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 1.35rem;
+}
+
+.feedback-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+}
+
+.feedback-rating {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 9px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel-strong);
+}
+
+.feedback-rating button {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: var(--radius);
+    color: rgba(179, 134, 47, 0.42);
+    background: transparent;
+    cursor: pointer;
+    font-size: 1.25rem;
+    transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.feedback-rating button.active,
+.feedback-rating button:hover {
+    color: var(--gold);
+    transform: translateY(-1px);
+}
+
+.feedback-admin-list {
+    display: grid;
+    gap: 12px;
+}
+
+.feedback-admin-card {
+    display: grid;
+    gap: 10px;
+    padding: 15px;
+    border-radius: var(--radius);
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+}
+
+.feedback-admin-card p {
+    margin: 0;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.status-line.success {
+    color: var(--green);
+}
+
+@keyframes feedbackIn {
+    to {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes feedbackSubmit {
+    50% {
+        transform: translateY(-2px) scale(1.01);
+    }
 }
 
 .textarea {
@@ -1265,6 +1424,14 @@ button {
         padding: 18px 18px 86px;
     }
 
+    .studyquest-footer {
+        width: 100%;
+        margin-left: 0;
+        padding: 12px 18px 92px;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
     .dashboard-grid,
     .two-column,
     .resource-grid,
@@ -1386,8 +1553,21 @@ button {
 
     .metric-row,
     .stat-grid,
-    .theme-choice {
+    .theme-choice,
+    .feedback-form-grid {
         grid-template-columns: 1fr;
+    }
+
+    .feedback-modal {
+        max-height: calc(100vh - 26px);
+        overflow-y: auto;
+        padding: 18px;
+    }
+
+    .feedback-modal-header,
+    .feedback-modal-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .task-topline,

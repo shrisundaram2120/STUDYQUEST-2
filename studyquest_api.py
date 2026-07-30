@@ -47,6 +47,7 @@ RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("STUDYQUEST_RATE_LIMIT_WINDOW_SECONDS"
 AUTH_RATE_LIMIT = int(os.getenv("STUDYQUEST_AUTH_RATE_LIMIT", "12"))
 QUEST_RATE_LIMIT = int(os.getenv("STUDYQUEST_QUEST_RATE_LIMIT", "40"))
 SPRINT_RATE_LIMIT = int(os.getenv("STUDYQUEST_SPRINT_RATE_LIMIT", "30"))
+FEEDBACK_RATE_LIMIT = int(os.getenv("STUDYQUEST_FEEDBACK_RATE_LIMIT", "20"))
 SYNC_PAYLOAD_MAX_BYTES = int(os.getenv("STUDYQUEST_SYNC_PAYLOAD_MAX_BYTES", "750000"))
 
 
@@ -320,6 +321,45 @@ class SyncPullResponse(BaseModel):
     server_updated_at: datetime | None = None
 
 
+class FeedbackSubmission(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=254)
+    type: Literal["Bug Report", "Feature Request", "General Feedback", "UI/UX Suggestion"] = "General Feedback"
+    rating: int = Field(ge=1, le=5)
+    message: str = Field(min_length=1, max_length=3000)
+    page_url: str | None = Field(default=None, max_length=1000)
+    user_agent: str | None = Field(default=None, max_length=500)
+
+    @field_validator("name", "email", "page_url", "user_agent", mode="before")
+    @classmethod
+    def strip_optional_text(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    @field_validator("message", mode="before")
+    @classmethod
+    def strip_message(cls, value: Any) -> str:
+        return str(value).strip() if value is not None else value
+
+    @field_validator("email")
+    @classmethod
+    def validate_optional_email(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        email = value.strip().lower()
+        if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+            raise ValueError("A valid email address is required.")
+        return email
+
+
+class FeedbackResponse(BaseModel):
+    ok: bool
+    feedback_id: str
+    stored: bool
+
+
 app = FastAPI(title=APP_NAME, version="3.0.0-free-tier")
 
 allowed_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
@@ -491,6 +531,9 @@ async def create_indexes(database: AsyncIOMotorDatabase) -> None:
     await database.quest_evaluation_cache.create_index([("video_id", 1), ("milestone_timestamp", 1), ("verified", 1)])
     await database.quest_evaluation_cache.create_index("updated_at")
     await database.sprint_events.create_index([("user_id", 1), ("created_at", -1)])
+    await database.feedback.create_index([("created_at", -1)])
+    await database.feedback.create_index([("type", 1), ("created_at", -1)])
+    await database.feedback.create_index([("rating", -1), ("created_at", -1)])
 
     try:
         await database.command({
@@ -655,6 +698,37 @@ async def pull_sync(account: dict[str, Any] = Depends(require_user)) -> SyncPull
         payload=snapshot.get("payload"),
         server_updated_at=snapshot.get("server_updated_at"),
     )
+
+
+@app.post("/api/v1/feedback", response_model=FeedbackResponse, dependencies=[Depends(rate_limited("feedback", FEEDBACK_RATE_LIMIT))])
+async def submit_feedback(request: FeedbackSubmission) -> FeedbackResponse:
+    feedback_id = str(uuid.uuid4())
+    payload = {
+        "feedback_id": feedback_id,
+        "name": request.name,
+        "email": request.email,
+        "type": request.type,
+        "rating": request.rating,
+        "message": request.message,
+        "page_url": request.page_url,
+        "user_agent": request.user_agent,
+        "created_at": now_utc(),
+    }
+
+    if db is not None:
+        await db.feedback.insert_one(payload)
+        return FeedbackResponse(ok=True, feedback_id=feedback_id, stored=True)
+
+    return FeedbackResponse(ok=True, feedback_id=feedback_id, stored=False)
+
+
+@app.get("/api/v1/feedback", dependencies=[Depends(require_admin_key)])
+async def list_feedback() -> dict[str, list[dict[str, Any]]]:
+    if db is None:
+        return {"feedback": []}
+
+    rows = await db.feedback.find({}, {"_id": 0}).sort("created_at", -1).to_list(length=500)
+    return {"feedback": rows}
 
 
 @app.post("/api/v1/skills")
