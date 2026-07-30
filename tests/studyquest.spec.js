@@ -82,6 +82,16 @@ test("Feedback admin renders chronological local feedback", async ({ page }) => 
   });
 
   await page.goto("/feedback-admin.html");
+  await expect(page.getByRole("heading", { name: "Admin login" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Feedback admin", exact: true })).toBeHidden();
+
+  await page.locator("#adminUsername").fill("sundar2120");
+  await page.locator("#adminPassword").fill("wrong-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.locator("#adminLoginStatus")).toContainText("Invalid admin username or password.");
+
+  await page.locator("#adminPassword").fill("sundar456");
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Feedback admin", exact: true })).toBeVisible();
   await expect(page.locator("#feedbackAdminList .feedback-admin-card")).toHaveCount(2);
 

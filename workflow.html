@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Workflow</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('wallpapersden.com_ai-landscape-2023-digital-art_1952x1120.jpg');
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                <div class="brand-copy">
+                    <h1>StudyQuest</h1>
+                    <p>Workflow</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="home.html">Home</a>
+                <a class="active" href="workflow.html">Workflow</a>
+                <a href="tasks.html">Tasks</a>
+                <a href="notes.html">Notes</a>
+                <a href="ttgen.html">Timetable</a>
+                <a href="flashcards.html">Flashcards</a>
+                <a href="exams.html">Exam Mode</a>
+                <a href="progress.html">Progress</a>
+                <a href="skill-tree.html">Skill Tree</a>
+                <a href="passport.html">Passport</a>
+                <a href="reminders.html">Reminders</a>
+                <a href="search.html">Search</a>
+                <a href="source.html">Sources</a>
+                <a href="aiquest.html">AI Quest</a>
+                <a href="video-quest.html">Video Quest</a>
+                <a href="ocr.html">Img-Text</a>
+                <a href="summarizer.html">Summarizer</a>
+                <a href="chat.html">Chat</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div class="page-title">
+                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                    <h2>StudyQuest workflow</h2>
+                    <p>Follow the full learning loop: capture, plan, focus, revise, test, level up, and export proof of work.</p>
+                </div>
+                <div class="topbar-info">
+                    <div class="clock-chip" id="clock">00:00:00</div>
+                    <div class="badge" id="todayDate">Loading date</div>
+                </div>
+            </div>
+
+            <section class="dashboard-grid">
+                <article class="card hero-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Today</p>
+                            <h3 style="margin-bottom: 8px;">Recommended study loop</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="copyWorkflowBtn" type="button">Copy workflow</button>
+                    </div>
+                    <div class="workflow-track" id="workflowTrack"></div>
+                </article>
+
+                <article class="card side-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Readiness</p>
+                            <h3 style="margin-bottom: 8px;">Live system status</h3>
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <div class="metric">
+                            <strong id="workflowScore">0</strong>
+                            <span class="muted">Workflow score</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="workflowFocus">0</strong>
+                            <span class="muted">Focus today</span>
+                        </div>
+                        <div class="metric">
+                            <strong id="workflowCards">0</strong>
+                            <span class="muted">Cards due</span>
+                        </div>
+                    </div>
+                    <div class="stack" id="workflowSignals" style="margin-top: 16px;"></div>
+                </article>
+
+                <article class="card wide-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Next actions</p>
+                            <h3 style="margin-bottom: 8px;">Where to go next</h3>
+                        </div>
+                    </div>
+                    <div class="workflow-actions" id="workflowActions"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="studyquest.js"></script>
+    <script>
+        StudyQuest.ensureProfile();
+        StudyQuest.attachClock('clock', 'todayDate');
+        StudyQuest.attachSidebarToggle('sidebarToggle', 'sidebar');
+
+        const e = StudyQuest.escapeHTML;
+
+        function stepState(done, warning = false) {
+            if (done) return 'done';
+            if (warning) return 'warning';
+            return 'open';
+        }
+
+        function buildWorkflow() {
+            const profile = StudyQuest.getProfile() || {};
+            const tasks = StudyQuest.getTasks();
+            const notes = StudyQuest.getNotes();
+            const schedule = StudyQuest.getSchedule();
+            const analytics = StudyQuest.getAnalytics();
+            const flashcards = StudyQuest.getFlashcardStats();
+            const exams = StudyQuest.getExamReadiness();
+            const progress = StudyQuest.getSkillProgress();
+            const passportReady = ['Diamond', 'Grandmaster'].includes(progress.leagueDivision);
+            const hasMeaningfulNotes = notes.some((note) => StudyQuest.countWords(note.content) >= 20);
+            const hasOpenTask = tasks.some((task) => !task.done);
+            const hasSchedule = schedule.some((row) => row.time && row.task);
+            const hasFocusToday = analytics.todayFocusMinutes > 0;
+            const hasExamPlan = exams.length > 0;
+
+            return [
+                {
+                    title: 'Set learner profile',
+                    body: profile.name ? `${profile.name} is ready.` : 'Add name, subjects, and goal.',
+                    state: stepState(Boolean(profile.name && profile.subjects?.length)),
+                    href: 'settings.html',
+                    action: 'Edit profile'
+                },
+                {
+                    title: 'Capture source material',
+                    body: hasMeaningfulNotes ? 'Notes or OCR captures are ready for learning.' : 'Add notes, OCR text, or source links.',
+                    state: stepState(hasMeaningfulNotes),
+                    href: 'notes.html',
+                    action: 'Open notes'
+                },
+                {
+                    title: 'Plan tasks and timetable',
+                    body: hasOpenTask || hasSchedule ? 'Study work is planned.' : 'Create tasks and anchor blocks.',
+                    state: stepState(hasOpenTask && hasSchedule, hasOpenTask || hasSchedule),
+                    href: hasOpenTask ? 'ttgen.html' : 'tasks.html',
+                    action: hasOpenTask ? 'Open timetable' : 'Open tasks'
+                },
+                {
+                    title: 'Run focused work',
+                    body: `${analytics.todayFocusMinutes} focus minutes logged today.`,
+                    state: stepState(hasFocusToday),
+                    href: 'home.html',
+                    action: 'Start focus'
+                },
+                {
+                    title: 'Generate recall practice',
+                    body: flashcards.total ? `${flashcards.due} cards due from ${flashcards.total} saved.` : 'Create flashcards from notes or AI Quest.',
+                    state: stepState(flashcards.total && flashcards.due === 0, flashcards.total && flashcards.due > 0),
+                    href: 'flashcards.html',
+                    action: 'Review cards'
+                },
+                {
+                    title: 'Track exam readiness',
+                    body: hasExamPlan ? `${exams[0].title}: ${exams[0].readiness}% ready.` : 'Add exam deadline and weak topics.',
+                    state: stepState(hasExamPlan && exams[0].readiness >= 70, hasExamPlan),
+                    href: 'exams.html',
+                    action: 'Open exam mode'
+                },
+                {
+                    title: 'Level up skills',
+                    body: `${progress.unlockedNodeIds.length} skills unlocked, ${progress.xpTotal} XP.`,
+                    state: stepState(progress.unlockedNodeIds.length >= 3, progress.unlockedNodeIds.length > 0),
+                    href: 'skill-tree.html',
+                    action: 'Open skill tree'
+                },
+                {
+                    title: 'Export proof of work',
+                    body: passportReady ? `${progress.leagueDivision} passport track unlocked.` : `Current league: ${progress.leagueDivision}.`,
+                    state: stepState(passportReady, progress.leagueDivision === 'Platinum'),
+                    href: 'passport.html',
+                    action: 'Open passport'
+                }
+            ];
+        }
+
+        function stateLabel(state) {
+            if (state === 'done') return 'Ready';
+            if (state === 'warning') return 'Needs attention';
+            return 'Not started';
+        }
+
+        function renderWorkflow() {
+            const steps = buildWorkflow();
+            const done = steps.filter((step) => step.state === 'done').length;
+            const warning = steps.filter((step) => step.state === 'warning').length;
+            const score = Math.round((done + warning * 0.5) / steps.length * 100);
+            const analytics = StudyQuest.getAnalytics();
+            const flashcards = StudyQuest.getFlashcardStats();
+
+            document.getElementById('workflowScore').textContent = String(score);
+            document.getElementById('workflowFocus').textContent = String(analytics.todayFocusMinutes);
+            document.getElementById('workflowCards').textContent = String(flashcards.due);
+
+            document.getElementById('workflowTrack').innerHTML = steps.map((step, index) => `
+                <article class="workflow-step ${e(step.state)}">
+                    <div class="workflow-number">${index + 1}</div>
+                    <div>
+                        <div class="task-topline">
+                            <strong>${e(step.title)}</strong>
+                            <span class="pill">${e(stateLabel(step.state))}</span>
+                        </div>
+                        <p class="muted">${e(step.body)}</p>
+                        <a class="btn btn-secondary" href="${e(step.href)}">${e(step.action)}</a>
+                    </div>
+                </article>
+            `).join('');
+
+            document.getElementById('workflowSignals').innerHTML = [
+                ['Open tasks', analytics.openTasks.length],
+                ['Overdue tasks', analytics.overdueTasks.length],
+                ['Completion rate', `${analytics.completionRate}%`],
+                ['Streak days', analytics.streakDays]
+            ].map(([label, value]) => `
+                <div class="list-item">
+                    <strong>${e(label)}</strong>
+                    <p class="muted">${e(value)}</p>
+                </div>
+            `).join('');
+
+            document.getElementById('workflowActions').innerHTML = steps
+                .filter((step) => step.state !== 'done')
+                .slice(0, 4)
+                .map((step) => `
+                    <a class="workflow-action" href="${e(step.href)}">
+                        <strong>${e(step.title)}</strong>
+                        <span class="muted">${e(step.body)}</span>
+                    </a>
+                `).join('') || `
+                    <div class="empty-state">
+                        <strong>Workflow is clear.</strong>
+                        <p class="muted">Keep your streak alive and review new material when it appears.</p>
+                    </div>
+                `;
+        }
+
+        document.getElementById('copyWorkflowBtn').addEventListener('click', async () => {
+            const text = buildWorkflow().map((step, index) => `${index + 1}. ${step.title}: ${stateLabel(step.state)} - ${step.body}`).join('\n');
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+            }
+            document.getElementById('copyWorkflowBtn').textContent = 'Copied';
+        });
+
+        renderWorkflow();
+    </script>
+</body>
+</html>

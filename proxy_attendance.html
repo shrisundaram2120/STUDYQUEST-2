@@ -1,0 +1,836 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proxy Attendance Monitor</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: #fffaf2;
+      --accent: #0f766e;
+      --accent-dark: #134e4a;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --danger: #b91c1c;
+      --warn: #b45309;
+      --line: #d6d3d1;
+      --shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(180, 83, 9, 0.12), transparent 32%),
+        var(--bg);
+    }
+
+    .wrap {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(214, 211, 209, 0.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      line-height: 1.1;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .video-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #111827;
+      min-height: 360px;
+    }
+
+    video, canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+    }
+
+    .controls, .form-grid, .metrics {
+      display: grid;
+      gap: 12px;
+    }
+
+    .controls {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 12px;
+    }
+
+    .form-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    input, textarea, select, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
+    }
+
+    button.secondary {
+      background: var(--accent-dark);
+    }
+
+    button.warn {
+      background: var(--warn);
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    .tag-row, .metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .metric {
+      background: #fffcf7;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.5rem;
+      margin-top: 6px;
+    }
+
+    .status {
+      padding: 10px 14px;
+      background: #ecfeff;
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      margin-bottom: 14px;
+      color: #0f172a;
+      font-weight: 500;
+    }
+
+    .tables {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent-dark);
+      background: #faf8f3;
+      position: sticky;
+      top: 0;
+    }
+
+    .table-scroll {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .present {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .absent {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .flag {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .note {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .hero, .grid, .tables, .controls, .form-grid, .metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="card">
+        <h1>Face Recognition Attendance with Proxy Checks</h1>
+        <p>This demo registers class members, opens attendance period-wise from the timetable, marks students using face recognition, exports records to Excel, and calculates attendance percentage for each student.</p>
+        <p class="note">Important: face matching alone cannot fully stop proxy attendance. This page adds basic suspicion flags for low-confidence matches, duplicate attempts, and multiple faces, but real anti-proxy systems need liveness detection and supervised enrollment.</p>
+      </div>
+      <div class="card metrics">
+        <div class="metric">
+          <span class="muted">Registered Students</span>
+          <strong id="studentCount">0</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Conducted Periods</span>
+          <strong id="periodCount">0</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Present Entries</span>
+          <strong id="presentCount">0</strong>
+        </div>
+        <div class="metric">
+          <span class="muted">Suspicion Flags</span>
+          <strong id="flagCount">0</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="status" id="systemStatus">Loading face models...</div>
+        <div class="video-wrap">
+          <video id="video" autoplay muted playsinline></video>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div class="controls">
+          <button id="startCameraBtn">Start Camera</button>
+          <button id="startPeriodBtn" class="secondary">Start Current Period</button>
+          <button id="stopScanBtn" class="warn">Stop Scan</button>
+        </div>
+        <div class="controls">
+          <button id="exportBtn">Export Excel</button>
+          <button id="saveTimetableBtn" class="secondary">Save Timetable</button>
+          <button id="clearDataBtn" class="danger">Clear Local Data</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Register Class Member</h2>
+        <div class="form-grid">
+          <input id="studentId" placeholder="Student ID">
+          <input id="studentName" placeholder="Student Name">
+          <input id="studentRoll" placeholder="Roll Number">
+        </div>
+        <div class="controls" style="grid-template-columns: 1fr 1fr; margin-top: 12px;">
+          <button id="registerBtn">Register Face</button>
+          <button id="markManualBtn" class="secondary">Mark Selected Present</button>
+        </div>
+        <div style="margin-top:12px;">
+          <select id="manualStudentSelect"></select>
+        </div>
+
+        <h2 style="margin-top: 18px;">Timetable</h2>
+        <p class="note">Edit this JSON array. Each row needs: <code>period</code>, <code>start</code>, <code>end</code>, <code>subject</code>.</p>
+        <textarea id="timetableInput"></textarea>
+      </div>
+    </section>
+
+    <section class="tables">
+      <div class="card">
+        <h2>Attendance Log</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Period</th>
+                <th>Subject</th>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th>Confidence</th>
+                <th>Flag</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Attendance Summary</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Present</th>
+                <th>Total</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    const STORAGE_KEYS = {
+      students: "proxy-attendance-students",
+      logs: "proxy-attendance-logs",
+      timetable: "proxy-attendance-timetable"
+    };
+
+    const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models";
+    const MATCH_THRESHOLD = 0.48;
+    const SUSPICIOUS_THRESHOLD = 0.55;
+
+    const defaultTimetable = [
+      { period: "P1", start: "09:00", end: "09:50", subject: "Mathematics" },
+      { period: "P2", start: "09:50", end: "10:40", subject: "Physics" },
+      { period: "P3", start: "10:55", end: "11:45", subject: "Chemistry" },
+      { period: "P4", start: "11:45", end: "12:35", subject: "English" },
+      { period: "P5", start: "13:20", end: "14:10", subject: "Computer Science" },
+      { period: "P6", start: "14:10", end: "15:00", subject: "Biology" }
+    ];
+
+    const els = {
+      video: document.getElementById("video"),
+      overlay: document.getElementById("overlay"),
+      status: document.getElementById("systemStatus"),
+      timetableInput: document.getElementById("timetableInput"),
+      attendanceBody: document.getElementById("attendanceTableBody"),
+      summaryBody: document.getElementById("summaryTableBody"),
+      studentId: document.getElementById("studentId"),
+      studentName: document.getElementById("studentName"),
+      studentRoll: document.getElementById("studentRoll"),
+      manualStudentSelect: document.getElementById("manualStudentSelect"),
+      studentCount: document.getElementById("studentCount"),
+      periodCount: document.getElementById("periodCount"),
+      presentCount: document.getElementById("presentCount"),
+      flagCount: document.getElementById("flagCount")
+    };
+
+    let students = loadJson(STORAGE_KEYS.students, []);
+    let attendanceLogs = loadJson(STORAGE_KEYS.logs, []);
+    let timetable = loadJson(STORAGE_KEYS.timetable, defaultTimetable);
+    let videoStream = null;
+    let scanTimer = null;
+    let modelsReady = false;
+
+    els.timetableInput.value = JSON.stringify(timetable, null, 2);
+
+    async function loadModels() {
+      setStatus("Loading face models...");
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+      ]);
+      modelsReady = true;
+      setStatus("Models loaded. Start camera, register students, then start the current period.");
+    }
+
+    async function startCamera() {
+      if (videoStream) return;
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 960, height: 720, facingMode: "user" },
+        audio: false
+      });
+      els.video.srcObject = videoStream;
+      await els.video.play();
+      resizeCanvas();
+      setStatus("Camera started. Keep one face in frame for registration or attendance.");
+    }
+
+    function stopScan() {
+      if (scanTimer) {
+        clearInterval(scanTimer);
+        scanTimer = null;
+      }
+      clearCanvas();
+      setStatus("Face scan stopped.");
+    }
+
+    function resizeCanvas() {
+      els.overlay.width = els.video.videoWidth || 960;
+      els.overlay.height = els.video.videoHeight || 720;
+    }
+
+    function clearCanvas() {
+      const ctx = els.overlay.getContext("2d");
+      ctx.clearRect(0, 0, els.overlay.width, els.overlay.height);
+    }
+
+    function setStatus(message) {
+      els.status.textContent = message;
+    }
+
+    function loadJson(key, fallback) {
+      try {
+        return JSON.parse(localStorage.getItem(key)) ?? fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function saveJson(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function nowParts() {
+      const now = new Date();
+      const date = now.toISOString().slice(0, 10);
+      const time = now.toTimeString().slice(0, 5);
+      const timestamp = now.toLocaleString();
+      return { now, date, time, timestamp };
+    }
+
+    function getCurrentPeriod() {
+      const { time } = nowParts();
+      return timetable.find(item => item.start <= time && time < item.end) || null;
+    }
+
+    function getPeriodKey(date, period) {
+      return `${date}__${period}`;
+    }
+
+    function saveAll() {
+      saveJson(STORAGE_KEYS.students, students);
+      saveJson(STORAGE_KEYS.logs, attendanceLogs);
+      saveJson(STORAGE_KEYS.timetable, timetable);
+      renderAll();
+    }
+
+    function ensureManualSelect() {
+      if (!students.length) {
+        els.manualStudentSelect.innerHTML = '<option value="">No registered students</option>';
+        return;
+      }
+      els.manualStudentSelect.innerHTML = students
+        .map(student => `<option value="${student.id}">${student.id} - ${student.name}</option>`)
+        .join("");
+    }
+
+    function renderAll() {
+      ensureManualSelect();
+      renderAttendance();
+      renderSummary();
+      updateMetrics();
+    }
+
+    function renderAttendance() {
+      const rows = [...attendanceLogs]
+        .sort((a, b) => new Date(b.date + "T" + (b.markTime || "00:00")) - new Date(a.date + "T" + (a.markTime || "00:00")));
+
+      els.attendanceBody.innerHTML = rows.map(row => `
+        <tr>
+          <td>${row.date}</td>
+          <td>${row.period}</td>
+          <td>${row.subject}</td>
+          <td>${row.studentId} - ${row.studentName}</td>
+          <td><span class="pill ${row.status === "Present" ? "present" : "absent"}">${row.status}</span></td>
+          <td>${row.markTime || "-"}</td>
+          <td>${typeof row.confidence === "number" ? row.confidence.toFixed(3) : "-"}</td>
+          <td>${row.flag ? `<span class="pill flag">${row.flag}</span>` : "-"}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSummary() {
+      const conducted = new Set(attendanceLogs.map(row => getPeriodKey(row.date, row.period)));
+      const summary = students.map(student => {
+        const present = attendanceLogs.filter(row => row.studentId === student.id && row.status === "Present").length;
+        const total = conducted.size;
+        const percent = total ? ((present / total) * 100).toFixed(1) : "0.0";
+        return { student, present, total, percent };
+      });
+
+      els.summaryBody.innerHTML = summary.map(item => `
+        <tr>
+          <td>${item.student.id}</td>
+          <td>${item.student.name}</td>
+          <td>${item.present}</td>
+          <td>${item.total}</td>
+          <td>${item.percent}%</td>
+        </tr>
+      `).join("");
+    }
+
+    function updateMetrics() {
+      const conducted = new Set(attendanceLogs.map(row => getPeriodKey(row.date, row.period)));
+      els.studentCount.textContent = students.length;
+      els.periodCount.textContent = conducted.size;
+      els.presentCount.textContent = attendanceLogs.filter(row => row.status === "Present").length;
+      els.flagCount.textContent = attendanceLogs.filter(row => row.flag).length;
+    }
+
+    async function getSingleFaceDescriptor() {
+      if (!modelsReady) throw new Error("Models are not loaded yet.");
+      if (!videoStream) throw new Error("Start the camera first.");
+      resizeCanvas();
+
+      const detections = await faceapi
+        .detectAllFaces(els.video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+
+      if (detections.length !== 1) {
+        throw new Error("Exactly one face must be visible.");
+      }
+
+      drawDetections(detections);
+      return Array.from(detections[0].descriptor);
+    }
+
+    function drawDetections(detections) {
+      const ctx = els.overlay.getContext("2d");
+      clearCanvas();
+      const displaySize = { width: els.overlay.width, height: els.overlay.height };
+      const resized = faceapi.resizeResults(detections, displaySize);
+      faceapi.draw.drawDetections(els.overlay, resized);
+      faceapi.draw.drawFaceLandmarks(els.overlay, resized);
+    }
+
+    async function registerStudent() {
+      const id = els.studentId.value.trim();
+      const name = els.studentName.value.trim();
+      const roll = els.studentRoll.value.trim();
+
+      if (!id || !name) {
+        setStatus("Student ID and Student Name are required.");
+        return;
+      }
+
+      const existing = students.find(student => student.id === id);
+      if (existing) {
+        setStatus("Student ID already exists. Use a different ID.");
+        return;
+      }
+
+      try {
+        const descriptor = await getSingleFaceDescriptor();
+        students.push({ id, name, roll, descriptor });
+        saveAll();
+        els.studentId.value = "";
+        els.studentName.value = "";
+        els.studentRoll.value = "";
+        setStatus(`Registered ${name} (${id}).`);
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    function validateTimetableInput() {
+      const parsed = JSON.parse(els.timetableInput.value);
+      if (!Array.isArray(parsed)) {
+        throw new Error("Timetable must be a JSON array.");
+      }
+      parsed.forEach(item => {
+        if (!item.period || !item.start || !item.end || !item.subject) {
+          throw new Error("Each timetable row needs period, start, end and subject.");
+        }
+      });
+      return parsed;
+    }
+
+    function saveTimetable() {
+      try {
+        timetable = validateTimetableInput();
+        saveAll();
+        setStatus("Timetable saved.");
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    function startCurrentPeriod() {
+      const current = getCurrentPeriod();
+      if (!current) {
+        setStatus("Current time does not fall inside any timetable period.");
+        return;
+      }
+      if (!students.length) {
+        setStatus("Register students before starting attendance.");
+        return;
+      }
+
+      const { date } = nowParts();
+      const existingRows = attendanceLogs.filter(row => row.date === date && row.period === current.period);
+
+      if (!existingRows.length) {
+        students.forEach(student => {
+          attendanceLogs.push({
+            date,
+            period: current.period,
+            subject: current.subject,
+            studentId: student.id,
+            studentName: student.name,
+            roll: student.roll,
+            status: "Absent",
+            markTime: "",
+            confidence: null,
+            flag: ""
+          });
+        });
+        saveAll();
+      }
+
+      beginRecognitionLoop(current, date);
+      setStatus(`Attendance started for ${current.period} - ${current.subject}. Default status is Absent until recognized.`);
+    }
+
+    function beginRecognitionLoop(periodInfo, date) {
+      if (scanTimer) clearInterval(scanTimer);
+      scanTimer = setInterval(async () => {
+        try {
+          if (!videoStream || !modelsReady || !students.length) return;
+          resizeCanvas();
+
+          const detections = await faceapi
+            .detectAllFaces(els.video, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+
+          drawDetections(detections);
+
+          if (!detections.length) {
+            setStatus(`Scanning ${periodInfo.period}. No face detected.`);
+            return;
+          }
+
+          if (detections.length > 1) {
+            setStatus(`Scanning ${periodInfo.period}. Multiple faces detected. Proxy suspicion flagged.`);
+            return;
+          }
+
+          const detection = detections[0];
+          const matches = students.map(student => ({
+            student,
+            distance: faceapi.euclideanDistance(detection.descriptor, new Float32Array(student.descriptor))
+          })).sort((a, b) => a.distance - b.distance);
+
+          const best = matches[0];
+          if (!best) return;
+
+          if (best.distance > SUSPICIOUS_THRESHOLD) {
+            setStatus(`Unknown face. Best distance ${best.distance.toFixed(3)} is outside the attendance threshold.`);
+            return;
+          }
+
+          const row = attendanceLogs.find(item =>
+            item.date === date &&
+            item.period === periodInfo.period &&
+            item.studentId === best.student.id
+          );
+
+          if (!row) return;
+
+          const { timestamp, now } = nowParts();
+          row.confidence = best.distance;
+          row.markTime = now.toTimeString().slice(0, 8);
+
+          if (best.distance <= MATCH_THRESHOLD) {
+            if (row.status === "Present") {
+              row.flag = "Duplicate re-scan";
+              setStatus(`Duplicate scan for ${best.student.name}. Marked with a review flag.`);
+            } else {
+              row.status = "Present";
+              row.flag = "";
+              setStatus(`${best.student.name} marked Present for ${periodInfo.period} at ${timestamp}.`);
+            }
+          } else {
+            row.flag = "Low-confidence match";
+            setStatus(`${best.student.name} detected with low-confidence match. Review recommended.`);
+          }
+
+          saveAll();
+        } catch (error) {
+          setStatus(error.message);
+        }
+      }, 2200);
+    }
+
+    function markManualPresent() {
+      const studentId = els.manualStudentSelect.value;
+      const current = getCurrentPeriod();
+      const { date, timestamp } = nowParts();
+
+      if (!current) {
+        setStatus("No active timetable period right now.");
+        return;
+      }
+
+      const row = attendanceLogs.find(item =>
+        item.date === date &&
+        item.period === current.period &&
+        item.studentId === studentId
+      );
+
+      if (!row) {
+        setStatus("Start the current period first.");
+        return;
+      }
+
+      row.status = "Present";
+      row.markTime = new Date().toTimeString().slice(0, 8);
+      row.confidence = null;
+      row.flag = "Manual override";
+      saveAll();
+      setStatus(`Manual present marked at ${timestamp}.`);
+    }
+
+    function exportExcel() {
+      const conducted = new Set(attendanceLogs.map(row => getPeriodKey(row.date, row.period)));
+      const summaryRows = students.map(student => {
+        const present = attendanceLogs.filter(row => row.studentId === student.id && row.status === "Present").length;
+        const total = conducted.size;
+        return {
+          StudentID: student.id,
+          Name: student.name,
+          Roll: student.roll || "",
+          PresentPeriods: present,
+          TotalConductedPeriods: total,
+          AttendancePercent: total ? Number(((present / total) * 100).toFixed(2)) : 0
+        };
+      });
+
+      const studentRows = students.map(student => ({
+        StudentID: student.id,
+        Name: student.name,
+        Roll: student.roll || "",
+        DescriptorStored: "Yes"
+      }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attendanceLogs), "Attendance_Log");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), "Summary");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(timetable), "Timetable");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), "Students");
+
+      const fileDate = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `attendance_report_${fileDate}.xlsx`);
+      setStatus("Excel file exported.");
+    }
+
+    function clearAllData() {
+      stopScan();
+      localStorage.removeItem(STORAGE_KEYS.students);
+      localStorage.removeItem(STORAGE_KEYS.logs);
+      localStorage.removeItem(STORAGE_KEYS.timetable);
+      students = [];
+      attendanceLogs = [];
+      timetable = [...defaultTimetable];
+      els.timetableInput.value = JSON.stringify(timetable, null, 2);
+      saveAll();
+      setStatus("All local attendance data cleared.");
+    }
+
+    document.getElementById("startCameraBtn").addEventListener("click", async () => {
+      try {
+        await startCamera();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    });
+
+    document.getElementById("registerBtn").addEventListener("click", registerStudent);
+    document.getElementById("saveTimetableBtn").addEventListener("click", saveTimetable);
+    document.getElementById("startPeriodBtn").addEventListener("click", startCurrentPeriod);
+    document.getElementById("stopScanBtn").addEventListener("click", stopScan);
+    document.getElementById("markManualBtn").addEventListener("click", markManualPresent);
+    document.getElementById("exportBtn").addEventListener("click", exportExcel);
+    document.getElementById("clearDataBtn").addEventListener("click", clearAllData);
+    window.addEventListener("resize", resizeCanvas);
+
+    renderAll();
+    loadModels().catch(error => setStatus("Model loading failed: " + error.message));
+  </script>
+</body>
+</html>
+

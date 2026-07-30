@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodLink AI | Post Surplus</title>
+    <link rel="stylesheet" href="foodlink.css">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="hero-panel">
+            <p class="eyebrow">Hotel portal</p>
+            <h1>Post surplus food before it becomes waste.</h1>
+            <p class="hero-copy">
+                Capture the food, log preparation details, and get an AI-based freshness estimate
+                to prioritize NGO pickup.
+            </p>
+            <div class="hero-metrics">
+                <article class="metric-card">
+                    <strong>TensorFlow CNN</strong>
+                    <span>Image-based spoilage scan placeholder</span>
+                </article>
+                <article class="metric-card">
+                    <strong>XGBoost</strong>
+                    <span>Shelf-life estimation placeholder</span>
+                </article>
+            </div>
+        </section>
+
+        <section class="form-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="eyebrow">FoodLink AI</p>
+                    <h2>Post Surplus</h2>
+                </div>
+                <span class="status-pill">Dark charcoal theme</span>
+            </div>
+
+            <form id="surplusForm" class="surplus-form">
+                <div class="field-group">
+                    <label for="photoInput">Photo Upload</label>
+                    <div class="photo-shell">
+                        <button type="button" class="button button-primary" id="cameraButton">Trigger Camera</button>
+                        <input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
+                        <p class="helper">Use camera capture for TensorFlow CNN spoilage analysis.</p>
+                        <img id="photoPreview" class="photo-preview hidden" alt="Food preview">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label for="foodType">Food Type</label>
+                        <select id="foodType" required>
+                            <option>Cooked Rice</option>
+                            <option>Curry</option>
+                            <option>Bread</option>
+                            <option>Dairy</option>
+                            <option>Fruits</option>
+                            <option>Sealed Packets</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="quantityKg">Quantity (kg)</label>
+                        <input id="quantityKg" type="number" min="0.1" step="0.1" placeholder="12.5" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="cookTime">Cook Time</label>
+                        <input id="cookTime" type="time" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Storage Condition</label>
+                        <div class="chip-row" id="storageChips">
+                            <button type="button" class="chip active" data-storage="Room Temperature">Room Temperature</button>
+                            <button type="button" class="chip" data-storage="Refrigerated">Refrigerated</button>
+                            <button type="button" class="chip" data-storage="Frozen">Frozen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <button type="submit" class="button button-primary">Analyze Freshness</button>
+                    <button type="reset" class="button button-secondary">Reset Form</button>
+                </div>
+            </form>
+
+            <section id="resultCard" class="result-card hidden" aria-live="polite">
+                <div class="result-header">
+                    <div>
+                        <p class="eyebrow">Prediction output</p>
+                        <h3>Consensus Shelf Life</h3>
+                    </div>
+                    <span id="urgencyBadge" class="urgency-badge">Green</span>
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-metric">
+                        <span>Consensus</span>
+                        <strong id="consensusShelfLife">0.0 hrs</strong>
+                    </div>
+                    <div class="result-metric">
+                        <span>XGBoost</span>
+                        <strong id="xgBoostValue">0.0 hrs</strong>
+                    </div>
+                    <div class="result-metric">
+                        <span>TensorFlow CNN</span>
+                        <strong id="tensorFlowValue">0.0 hrs</strong>
+                    </div>
+                </div>
+
+                <div class="notes-box">
+                    <h4>AI Notes</h4>
+                    <ul id="notesList"></ul>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="foodlink.js"></script>
+</body>
+</html>
+

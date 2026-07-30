@@ -47,83 +47,97 @@
         </aside>
 
         <main class="main">
-            <div class="topbar">
-                <div class="page-title">
-                    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
-                    <h2>Feedback admin</h2>
-                    <p>Review StudyQuest feedback in chronological order from local submissions and the optional FastAPI backend.</p>
-                </div>
-                <div class="topbar-info">
-                    <div class="clock-chip" id="clock">00:00:00</div>
-                    <div class="badge" id="todayDate">Loading date</div>
-                </div>
-            </div>
-
-            <section class="dashboard-grid">
-                <article class="card wide-card">
-                    <div class="card-header">
-                        <div>
-                            <p class="eyebrow">Controls</p>
-                            <h3 style="margin-bottom: 8px;">Feedback inbox</h3>
-                        </div>
-                        <button class="btn btn-primary" type="button" data-feedback-open>Open feedback form</button>
-                    </div>
-                    <div class="inline-form">
-                        <select class="select" id="feedbackTypeFilter">
-                            <option value="all">All feedback types</option>
-                        </select>
-                        <select class="select" id="feedbackRatingFilter">
-                            <option value="all">All ratings</option>
-                            <option value="5">5 stars</option>
-                            <option value="4">4 stars</option>
-                            <option value="3">3 stars</option>
-                            <option value="2">2 stars</option>
-                            <option value="1">1 star</option>
-                        </select>
-                        <input class="field" id="feedbackSearch" type="search" placeholder="Search feedback">
-                    </div>
-                    <div class="button-row" style="margin-top: 14px;">
-                        <input class="field" id="feedbackAdminKey" type="password" placeholder="Backend admin key">
-                        <button class="btn btn-secondary" id="loadBackendFeedbackBtn" type="button">Load backend feedback</button>
-                        <button class="btn btn-ghost" id="exportFeedbackBtn" type="button">Export CSV</button>
-                        <button class="btn btn-danger" id="clearLocalFeedbackBtn" type="button">Clear local feedback</button>
-                    </div>
-                    <div class="status-line" id="feedbackAdminStatus"></div>
-                </article>
-
-                <article class="card side-card">
-                    <div class="card-header">
-                        <div>
-                            <p class="eyebrow">Summary</p>
-                            <h3 style="margin-bottom: 8px;">Feedback metrics</h3>
-                        </div>
-                    </div>
-                    <div class="metric-row">
-                        <div class="metric">
-                            <strong id="feedbackTotal">0</strong>
-                            <span class="muted">Total</span>
-                        </div>
-                        <div class="metric">
-                            <strong id="feedbackAverage">0</strong>
-                            <span class="muted">Average rating</span>
-                        </div>
-                        <div class="metric">
-                            <strong id="feedbackSynced">0</strong>
-                            <span class="muted">Backend rows</span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="card hero-card">
-                    <div class="card-header">
-                        <div>
-                            <p class="eyebrow">Chronological</p>
-                            <h3 style="margin-bottom: 8px;">Submitted feedback</h3>
-                        </div>
-                    </div>
-                    <div class="feedback-admin-list" id="feedbackAdminList"></div>
-                </article>
+            <section class="admin-login-gate" id="adminLoginGate" aria-labelledby="adminLoginTitle">
+                <form class="card admin-login-card" id="adminLoginForm" novalidate>
+                    <p class="eyebrow">Admin</p>
+                    <h2 id="adminLoginTitle">Admin login</h2>
+                    <input class="field" id="adminUsername" type="text" autocomplete="username" aria-label="Admin username" placeholder="Username">
+                    <input class="field" id="adminPassword" type="password" autocomplete="current-password" aria-label="Admin password" placeholder="Password">
+                    <button class="btn btn-primary" type="submit">Sign in</button>
+                    <div class="status-line" id="adminLoginStatus" role="status"></div>
+                </form>
             </section>
+
+            <div class="admin-content hidden" id="feedbackAdminContent">
+                <div class="topbar">
+                    <div class="page-title">
+                        <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="false">Menu</button>
+                        <h2>Feedback admin</h2>
+                        <p>Review StudyQuest feedback in chronological order from local submissions and the optional FastAPI backend.</p>
+                    </div>
+                    <div class="topbar-info">
+                        <div class="clock-chip" id="clock">00:00:00</div>
+                        <div class="badge" id="todayDate">Loading date</div>
+                        <button class="btn btn-ghost" id="adminLogoutBtn" type="button">Logout</button>
+                    </div>
+                </div>
+
+                <section class="dashboard-grid">
+                    <article class="card wide-card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Controls</p>
+                                <h3 style="margin-bottom: 8px;">Feedback inbox</h3>
+                            </div>
+                            <button class="btn btn-primary" type="button" data-feedback-open>Open feedback form</button>
+                        </div>
+                        <div class="inline-form">
+                            <select class="select" id="feedbackTypeFilter">
+                                <option value="all">All feedback types</option>
+                            </select>
+                            <select class="select" id="feedbackRatingFilter">
+                                <option value="all">All ratings</option>
+                                <option value="5">5 stars</option>
+                                <option value="4">4 stars</option>
+                                <option value="3">3 stars</option>
+                                <option value="2">2 stars</option>
+                                <option value="1">1 star</option>
+                            </select>
+                            <input class="field" id="feedbackSearch" type="search" placeholder="Search feedback">
+                        </div>
+                        <div class="button-row" style="margin-top: 14px;">
+                            <input class="field" id="feedbackAdminKey" type="password" placeholder="Backend admin key">
+                            <button class="btn btn-secondary" id="loadBackendFeedbackBtn" type="button">Load backend feedback</button>
+                            <button class="btn btn-ghost" id="exportFeedbackBtn" type="button">Export CSV</button>
+                            <button class="btn btn-danger" id="clearLocalFeedbackBtn" type="button">Clear local feedback</button>
+                        </div>
+                        <div class="status-line" id="feedbackAdminStatus"></div>
+                    </article>
+
+                    <article class="card side-card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Summary</p>
+                                <h3 style="margin-bottom: 8px;">Feedback metrics</h3>
+                            </div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric">
+                                <strong id="feedbackTotal">0</strong>
+                                <span class="muted">Total</span>
+                            </div>
+                            <div class="metric">
+                                <strong id="feedbackAverage">0</strong>
+                                <span class="muted">Average rating</span>
+                            </div>
+                            <div class="metric">
+                                <strong id="feedbackSynced">0</strong>
+                                <span class="muted">Backend rows</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="card hero-card">
+                        <div class="card-header">
+                            <div>
+                                <p class="eyebrow">Chronological</p>
+                                <h3 style="margin-bottom: 8px;">Submitted feedback</h3>
+                            </div>
+                        </div>
+                        <div class="feedback-admin-list" id="feedbackAdminList"></div>
+                    </article>
+                </section>
+            </div>
         </main>
     </div>
 
@@ -138,9 +152,51 @@
         const typeFilter = document.getElementById('feedbackTypeFilter');
         const ratingFilter = document.getElementById('feedbackRatingFilter');
         const searchInput = document.getElementById('feedbackSearch');
+        const adminSessionKey = 'studyquest.feedbackAdminSession';
+        const adminCredentials = {
+            username: 'sundar2120',
+            passwordHash: 'a970b1eb8ef95b7efaf616cf9eeecf664dc707ae964145fc3d9cae706be82079'
+        };
         let backendRows = [];
 
         typeFilter.innerHTML += StudyQuest.feedbackTypes.map((type) => `<option value="${e(type)}">${e(type)}</option>`).join('');
+
+        function setAdminUnlocked(unlocked) {
+            document.getElementById('adminLoginGate').classList.toggle('hidden', unlocked);
+            document.getElementById('feedbackAdminContent').classList.toggle('hidden', !unlocked);
+            if (unlocked) {
+                renderFeedback();
+                searchInput.focus();
+            }
+        }
+
+        async function sha256(value) {
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+            return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const loginStatus = document.getElementById('adminLoginStatus');
+            const passwordHash = await sha256(password);
+            if (username !== adminCredentials.username || passwordHash !== adminCredentials.passwordHash) {
+                loginStatus.textContent = 'Invalid admin username or password.';
+                loginStatus.className = 'status-line error';
+                return;
+            }
+            sessionStorage.setItem(adminSessionKey, 'true');
+            loginStatus.textContent = '';
+            setAdminUnlocked(true);
+        });
+
+        document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+            sessionStorage.removeItem(adminSessionKey);
+            document.getElementById('adminPassword').value = '';
+            setAdminUnlocked(false);
+            document.getElementById('adminUsername').focus();
+        });
 
         function normalizeRow(row, source = 'local') {
             return {
@@ -269,7 +325,7 @@
             control.addEventListener('change', renderFeedback);
         });
 
-        renderFeedback();
+        setAdminUnlocked(sessionStorage.getItem(adminSessionKey) === 'true');
     </script>
 </body>
 </html>
