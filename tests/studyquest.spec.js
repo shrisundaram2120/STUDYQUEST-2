@@ -108,6 +108,15 @@ test("Feedback admin renders chronological local feedback", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Feedback admin", exact: true })).toBeHidden();
 });
 
+test("Product Hunt demo presents the StudyQuest workflow", async ({ page }) => {
+  await page.goto("/producthunt-demo.html");
+  await expect(page.getByRole("heading", { name: "Turn study chaos into a game plan." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "1. Plan" })).toHaveClass(/active/);
+  await page.getByRole("button", { name: "4. Practice" }).click();
+  await expect(page.getByRole("heading", { name: "Video Quest pauses lessons at checkpoints" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open this part" })).toHaveAttribute("href", "video-quest.html");
+});
+
 test("flashcard review updates spaced repetition state", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("studyquest.flashcards", JSON.stringify([

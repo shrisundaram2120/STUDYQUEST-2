@@ -3,6 +3,9 @@
 node_modules/
 playwright-report/
 test-results/
+launch-assets/*.png
+launch-assets/*.webm
+launch-assets/*.mp4
 *.log
 __pycache__/
 .venv/

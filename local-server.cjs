@@ -18,7 +18,9 @@ const types = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
-    ".webp": "image/webp"
+    ".webp": "image/webp",
+    ".webm": "video/webm",
+    ".mp4": "video/mp4"
 };
 
 function loadEnvFile(filePath) {

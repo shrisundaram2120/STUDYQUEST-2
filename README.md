@@ -69,6 +69,23 @@ Copy `.env.example` to `.env` for local backend configuration. Never commit real
 - `ocr.html`: in-app browser OCR with image preview, optional cleanup, confidence, history, and handoff to Notes, Summarizer, or AI Quest.
 - `source.html`: curated resource library with filters, trust labels, tags, CSV export, and JSON share-pack import/export.
 - `video-quest.html`: YouTube milestone hard-pause checkpoints with terminal/scratchpad evaluation panels.
+- `producthunt-demo.html`: Product Hunt-ready interactive workflow demo that can auto-play for launch video recording.
+
+## Product Hunt Launch Assets
+
+Use `producthunt-demo.html` as the interactive demo link after GitHub Pages deploys:
+
+```text
+https://shrisundaram2120.github.io/STUDYQUEST-2/producthunt-demo.html
+```
+
+Generate a 1280x720 workflow video and cover image locally:
+
+```bash
+npm run record:producthunt
+```
+
+The generated files are saved in `launch-assets/` as `studyquest-producthunt-workflow.webm` and `studyquest-producthunt-cover.png`. Upload the WebM to YouTube or Loom for Product Hunt's video field.
 
 ## GitHub Pages
 

@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyQuest | Product Hunt Workflow Demo</title>
+    <link rel="icon" href="studyquest-high-resolution-logo-black-transparent.png" type="image/png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#17202b">
+    <link rel="stylesheet" href="studyquest.css">
+    <style>
+        body {
+            --page-image: url('wallpapersden.com_ai-landscape-2023-digital-art_1952x1120.jpg');
+            min-height: 100vh;
+        }
+
+        .launch-demo {
+            min-height: 100vh;
+            padding: 16px 22px;
+            color: #fff9f2;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .launch-demo-shell {
+            width: min(1180px, 100%);
+            min-height: calc(100vh - 32px);
+            max-height: calc(100vh - 32px);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(280px, 0.8fr) minmax(560px, 1.2fr);
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        .launch-copy,
+        .launch-stage,
+        .workflow-strip {
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(13, 23, 35, 0.74);
+            box-shadow: 0 26px 70px rgba(4, 10, 18, 0.34);
+            backdrop-filter: blur(18px);
+        }
+
+        .launch-copy {
+            border-radius: 18px;
+            padding: 22px;
+            display: grid;
+            align-content: space-between;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        .launch-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .launch-brand img {
+            width: 46px;
+            height: 46px;
+            object-fit: contain;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.86);
+            padding: 5px;
+        }
+
+        .launch-brand strong,
+        .launch-title h1,
+        .launch-kpi strong,
+        .demo-screen h2 {
+            letter-spacing: 0;
+        }
+
+        .launch-brand span,
+        .launch-title p,
+        .launch-kpi span,
+        .workflow-strip p {
+            color: rgba(255, 249, 242, 0.78);
+        }
+
+        .launch-title {
+            display: grid;
+            gap: 10px;
+        }
+
+        .launch-title h1 {
+            margin: 0;
+            font-size: clamp(2.45rem, 5.4vw, 4.35rem);
+            line-height: 0.95;
+        }
+
+        .launch-title p {
+            margin: 0;
+            max-width: 35rem;
+            line-height: 1.45;
+            font-size: 0.98rem;
+        }
+
+        .launch-actions,
+        .launch-kpis {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .launch-actions .btn {
+            min-height: 44px;
+        }
+
+        .launch-kpi {
+            min-width: 112px;
+            padding: 10px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .launch-kpi strong,
+        .launch-kpi span {
+            display: block;
+        }
+
+        .launch-kpi strong {
+            font-size: 1.2rem;
+        }
+
+        .launch-stage {
+            border-radius: 22px;
+            padding: 14px;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .demo-window-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 13px;
+            border-radius: 16px;
+            color: var(--ink);
+            background: rgba(255, 249, 242, 0.92);
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .window-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: var(--gold);
+        }
+
+        .window-dots span:nth-child(2) {
+            background: var(--green);
+        }
+
+        .window-dots span:nth-child(3) {
+            background: var(--blue);
+        }
+
+        .demo-screen {
+            min-height: 0;
+            border-radius: 18px;
+            padding: 18px 20px;
+            color: var(--ink);
+            background: linear-gradient(135deg, rgba(255, 249, 242, 0.98), rgba(232, 244, 236, 0.94));
+            display: grid;
+            grid-template-columns: 0.9fr 1.1fr;
+            gap: 18px;
+            align-items: stretch;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-screen::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(43, 61, 80, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(43, 61, 80, 0.06) 1px, transparent 1px);
+            background-size: 34px 34px;
+            pointer-events: none;
+        }
+
+        .demo-copy,
+        .demo-visual {
+            position: relative;
+            z-index: 1;
+        }
+
+        .demo-copy {
+            display: grid;
+            align-content: start;
+            gap: 11px;
+        }
+
+        .demo-copy h2 {
+            margin: 0;
+            font-size: clamp(1.75rem, 3.6vw, 2.75rem);
+            line-height: 1;
+        }
+
+        .demo-copy p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.58;
+        }
+
+        .demo-tags,
+        .demo-links,
+        .demo-card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .demo-tag {
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--panel-strong);
+            color: var(--ink);
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+
+        .demo-visual {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 12px;
+        }
+
+        .demo-toolbar,
+        .demo-card,
+        .phone-preview {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.74);
+            box-shadow: 0 16px 42px rgba(43, 61, 80, 0.13);
+        }
+
+        .demo-toolbar {
+            min-height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+        }
+
+        .demo-visual-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 170px;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .demo-card-grid {
+            align-content: start;
+        }
+
+        .demo-card {
+            flex: 1 1 170px;
+            min-height: 98px;
+            padding: 12px;
+            border-radius: 16px;
+            display: grid;
+            gap: 8px;
+            align-content: start;
+        }
+
+        .demo-card strong {
+            font-size: 1rem;
+        }
+
+        .demo-card span {
+            color: var(--muted);
+            line-height: 1.42;
+            font-size: 0.9rem;
+        }
+
+        .phone-preview {
+            min-height: 242px;
+            border-radius: 26px;
+            padding: 13px;
+            display: grid;
+            gap: 10px;
+            align-content: start;
+        }
+
+        .phone-notch {
+            width: 68px;
+            height: 7px;
+            margin: 0 auto 4px;
+            border-radius: 999px;
+            background: rgba(43, 61, 80, 0.18);
+        }
+
+        .phone-row {
+            min-height: 42px;
+            border-radius: 13px;
+            padding: 9px;
+            color: var(--ink);
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+            font-size: 0.86rem;
+        }
+
+        .workflow-strip {
+            border-radius: 18px;
+            padding: 12px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .workflow-strip p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .workflow-steps {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .workflow-step {
+            min-height: 46px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff9f2;
+            cursor: pointer;
+            font-weight: 800;
+            transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+        }
+
+        .workflow-step.active,
+        .workflow-step:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 249, 242, 0.94);
+            color: var(--ink);
+            border-color: rgba(255, 249, 242, 0.7);
+        }
+
+        .workflow-progress {
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            overflow: hidden;
+        }
+
+        .workflow-progress span {
+            display: block;
+            height: 100%;
+            width: 0;
+            border-radius: inherit;
+            background: var(--gold);
+            transition: width 0.28s ease;
+        }
+
+        @media (max-width: 980px) {
+            .launch-demo-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .demo-screen,
+            .demo-visual-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .phone-preview {
+                min-height: auto;
+            }
+
+            .workflow-steps {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .launch-demo {
+                padding: 14px;
+                overflow: visible;
+            }
+
+            .launch-copy,
+            .launch-stage {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            .demo-screen {
+                min-height: auto;
+                padding: 16px;
+            }
+
+            .workflow-steps {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="launch-demo">
+        <section class="launch-demo-shell" aria-label="StudyQuest Product Hunt demo">
+            <aside class="launch-copy">
+                <div class="launch-brand">
+                    <img src="studyquest-high-resolution-logo-black-transparent.png" alt="StudyQuest logo">
+                    <div>
+                        <strong>StudyQuest</strong>
+                        <span>Product Hunt workflow demo</span>
+                    </div>
+                </div>
+
+                <div class="launch-title">
+                    <p class="eyebrow">Launch story</p>
+                    <h1>Turn study chaos into a game plan.</h1>
+                    <p>StudyQuest combines planning, OCR notes, AI study tools, spaced repetition, exam mode, progress analytics, and a gamified skill tree into one student-friendly PWA.</p>
+                    <div class="launch-actions">
+                        <button class="btn btn-primary" id="playDemoBtn" type="button">Play workflow</button>
+                        <a class="btn btn-secondary" href="home.html">Open app</a>
+                    </div>
+                </div>
+
+                <div class="launch-kpis" aria-label="Launch highlights">
+                    <div class="launch-kpi">
+                        <strong>7</strong>
+                        <span>core workflow steps</span>
+                    </div>
+                    <div class="launch-kpi">
+                        <strong>PWA</strong>
+                        <span>mobile and offline ready</span>
+                    </div>
+                    <div class="launch-kpi">
+                        <strong>RPG</strong>
+                        <span>XP, leagues, badges</span>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="launch-stage">
+                <div class="demo-window-bar">
+                    <div class="window-dots" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <strong id="screenLabel">Workflow step</strong>
+                    <a href="index.html">Start</a>
+                </div>
+
+                <article class="demo-screen" id="demoScreen" aria-live="polite"></article>
+
+                <div class="workflow-strip">
+                    <p id="stepNarration">Use the step buttons to explore the StudyQuest workflow.</p>
+                    <div class="workflow-steps" id="workflowSteps"></div>
+                    <div class="workflow-progress" aria-hidden="true"><span id="workflowProgress"></span></div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const workflowSteps = [
+            {
+                label: 'Plan',
+                title: 'Start with a focused study dashboard',
+                body: 'Students see what matters today: tasks, deadlines, focus blocks, progress, and the next best action.',
+                narration: 'Step one: StudyQuest turns a scattered study day into a clear dashboard.',
+                tags: ['Tasks', 'Timetable', 'Focus sessions'],
+                toolbar: 'Today: Science revision, Algebra practice, 30-minute focus sprint',
+                cards: [
+                    ['Weekly progress', 'Seven-day focus bars and task completion history.'],
+                    ['Next deadline', 'Exam and homework pressure stays visible.'],
+                    ['Daily streak', 'Consistency is rewarded with XP multipliers.']
+                ],
+                phone: ['Bottom nav ready', 'Focus: 25 min', 'Science due today'],
+                link: 'home.html'
+            },
+            {
+                label: 'Capture',
+                title: 'Capture notes from books, images, and shared resources',
+                body: 'StudyQuest keeps resources, OCR scans, notes, and class material in one searchable study library.',
+                narration: 'Step two: learners collect study material without leaving the app.',
+                tags: ['OCR', 'Sources', 'Notes'],
+                toolbar: 'Import worksheet photo, bookmark NCERT video, save class notes',
+                cards: [
+                    ['Image to text', 'Built-in OCR extracts text from screenshots and worksheets.'],
+                    ['Resource library', 'Trust labels, tags, filters, and share-pack imports.'],
+                    ['Notes handoff', 'OCR and resources can move straight into Notes or AI Quest.']
+                ],
+                phone: ['OCR confidence 94%', 'Teacher verified', 'Saved to Notes'],
+                link: 'ocr.html'
+            },
+            {
+                label: 'Learn',
+                title: 'Convert material into summaries, quizzes, and flashcards',
+                body: 'AI Quest can summarize source material, explain concepts, build quizzes, and send cards into review.',
+                narration: 'Step three: StudyQuest turns raw material into active learning.',
+                tags: ['AI Quest', 'Summaries', 'Quizzes'],
+                toolbar: 'Source: Photosynthesis chapter. Mode: quiz and flashcards.',
+                cards: [
+                    ['Revision summary', 'Exam-focused bullets and key terms.'],
+                    ['Practice quiz', 'Questions for retrieval practice.'],
+                    ['Flashcard deck', 'Cards saved into spaced repetition.']
+                ],
+                phone: ['Explain mode', '8 cards ready', 'Quiz score signal'],
+                link: 'aiquest.html'
+            },
+            {
+                label: 'Practice',
+                title: 'Video Quest pauses lessons at checkpoints',
+                body: 'The YouTube workflow hard-pauses at milestones, opens a right-side evaluation panel, and asks the learner to prove understanding.',
+                narration: 'Step four: passive video becomes checkpoint-based practice.',
+                tags: ['Video Quest', 'Terminal', 'Scratchpad'],
+                toolbar: 'Milestone crossed at 00:45. Evaluation panel opened.',
+                cards: [
+                    ['Hard pause', 'Milestone timestamps stop the lesson automatically.'],
+                    ['Scratchpad mode', 'Students explain ideas before moving on.'],
+                    ['Terminal mode', 'Code-style lessons can ask for runnable thinking.']
+                ],
+                phone: ['Checkpoint locked', 'Submit answer', 'XP pending'],
+                link: 'video-quest.html'
+            },
+            {
+                label: 'Revise',
+                title: 'Spaced repetition and exam mode plan the revision loop',
+                body: 'Flashcards use again, hard, good, and easy scheduling, while exam mode tracks weak topics and deadline pressure.',
+                narration: 'Step five: revision becomes scheduled, measurable, and deadline-aware.',
+                tags: ['Flashcards', 'Exam mode', 'Weak topics'],
+                toolbar: 'Due today: 12 cards. Exam in 9 days. Weak topic: Electricity.',
+                cards: [
+                    ['Review buttons', 'Again, hard, good, and easy update the next due date.'],
+                    ['Syllabus map', 'Topics are scored by confidence and exam weight.'],
+                    ['Revision plan', 'Weak topics move to the front of the plan.']
+                ],
+                phone: ['Good review', 'Exam countdown', 'Weak topic score'],
+                link: 'flashcards.html'
+            },
+            {
+                label: 'Level up',
+                title: 'Gamification makes progress feel visible',
+                body: 'XP, leagues, badges, skill prerequisites, streaks, and Credential Passport exports make learning progress tangible.',
+                narration: 'Step six: the study loop becomes a progression system.',
+                tags: ['Skill tree', 'Leagues', 'Passport'],
+                toolbar: 'League: Silver. XP: 1,840. Next node: Note Alchemist.',
+                cards: [
+                    ['Skill prerequisites', 'Nodes unlock only when the learner has built foundations.'],
+                    ['Progress charts', 'Weekly graphs and heatmaps reveal study patterns.'],
+                    ['Credential Passport', 'Redacted proof of verified execution metrics.']
+                ],
+                phone: ['Badge unlocked', 'Silver league', 'Export ready'],
+                link: 'skill-tree.html'
+            },
+            {
+                label: 'Improve',
+                title: 'Feedback keeps the product learning too',
+                body: 'A built-in feedback modal and admin inbox help collect bug reports, feature ideas, ratings, and UI suggestions.',
+                narration: 'Step seven: StudyQuest closes the loop with feedback from real learners.',
+                tags: ['Feedback', 'Admin inbox', 'Product loop'],
+                toolbar: 'New feedback: UI suggestion, 5 stars, newest-first admin view.',
+                cards: [
+                    ['Feedback modal', 'Name and email are optional; message is required.'],
+                    ['Admin login', 'Feedback admin is gated before review.'],
+                    ['Backend-ready', 'Local storage first, FastAPI and MongoDB when configured.']
+                ],
+                phone: ['Rating 5/5', 'Bug report', 'Thank you message'],
+                link: 'feedback-admin.html'
+            }
+        ];
+
+        const demoScreen = document.getElementById('demoScreen');
+        const workflowStepsEl = document.getElementById('workflowSteps');
+        const workflowProgress = document.getElementById('workflowProgress');
+        const stepNarration = document.getElementById('stepNarration');
+        const screenLabel = document.getElementById('screenLabel');
+        const playDemoBtn = document.getElementById('playDemoBtn');
+        const params = new URLSearchParams(window.location.search);
+        const shouldRecord = params.get('record') === '1';
+        let activeIndex = 0;
+        let autoTimer = null;
+
+        function escapeHTML(value) {
+            return String(value || '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function renderStep(index) {
+            activeIndex = (index + workflowSteps.length) % workflowSteps.length;
+            const step = workflowSteps[activeIndex];
+            screenLabel.textContent = `${activeIndex + 1} / ${workflowSteps.length}: ${step.label}`;
+            stepNarration.textContent = step.narration;
+            workflowProgress.style.width = `${((activeIndex + 1) / workflowSteps.length) * 100}%`;
+            demoScreen.innerHTML = `
+                <div class="demo-copy">
+                    <p class="eyebrow">${escapeHTML(step.label)}</p>
+                    <h2>${escapeHTML(step.title)}</h2>
+                    <p>${escapeHTML(step.body)}</p>
+                    <div class="demo-tags">
+                        ${step.tags.map((tag) => `<span class="demo-tag">${escapeHTML(tag)}</span>`).join('')}
+                    </div>
+                    <div class="demo-links">
+                        <a class="btn btn-secondary" href="${escapeHTML(step.link)}">Open this part</a>
+                    </div>
+                </div>
+                <div class="demo-visual">
+                    <div class="demo-toolbar">
+                        <strong>${escapeHTML(step.toolbar)}</strong>
+                        <span class="pill">Live workflow</span>
+                    </div>
+                    <div class="demo-visual-grid">
+                        <div class="demo-card-grid">
+                            ${step.cards.map(([title, text]) => `
+                                <div class="demo-card">
+                                    <strong>${escapeHTML(title)}</strong>
+                                    <span>${escapeHTML(text)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="phone-preview" aria-label="Mobile preview">
+                            <div class="phone-notch"></div>
+                            ${step.phone.map((item) => `<div class="phone-row">${escapeHTML(item)}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.querySelectorAll('.workflow-step').forEach((button, buttonIndex) => {
+                button.classList.toggle('active', buttonIndex === activeIndex);
+                button.setAttribute('aria-pressed', String(buttonIndex === activeIndex));
+            });
+        }
+
+        function createStepButtons() {
+            workflowStepsEl.innerHTML = workflowSteps.map((step, index) => `
+                <button class="workflow-step" type="button" data-step="${index}" aria-pressed="false">
+                    ${index + 1}. ${escapeHTML(step.label)}
+                </button>
+            `).join('');
+            workflowStepsEl.querySelectorAll('[data-step]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    stopAutoPlay();
+                    renderStep(Number(button.dataset.step));
+                });
+            });
+        }
+
+        function stopAutoPlay() {
+            if (autoTimer) {
+                clearInterval(autoTimer);
+                autoTimer = null;
+            }
+            playDemoBtn.textContent = 'Play workflow';
+        }
+
+        function startAutoPlay({ recording = false } = {}) {
+            stopAutoPlay();
+            playDemoBtn.textContent = 'Pause workflow';
+            renderStep(0);
+            autoTimer = setInterval(() => {
+                if (activeIndex >= workflowSteps.length - 1) {
+                    stopAutoPlay();
+                    if (recording) {
+                        setTimeout(() => {
+                            document.body.dataset.recordingDone = 'true';
+                        }, 2600);
+                    }
+                    return;
+                }
+                renderStep(activeIndex + 1);
+            }, recording ? 5200 : 4600);
+        }
+
+        playDemoBtn.addEventListener('click', () => {
+            if (autoTimer) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowRight') {
+                stopAutoPlay();
+                renderStep(activeIndex + 1);
+            }
+            if (event.key === 'ArrowLeft') {
+                stopAutoPlay();
+                renderStep(activeIndex - 1);
+            }
+        });
+
+        createStepButtons();
+        renderStep(0);
+
+        if (shouldRecord) {
+            window.addEventListener('load', () => {
+                setTimeout(() => startAutoPlay({ recording: true }), 900);
+            });
+        }
+    </script>
+</body>
+</html>

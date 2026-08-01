@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node local-server.cjs 4173",
     "api": "python -m uvicorn studyquest_api:app --host 0.0.0.0 --port 8000",
+    "record:producthunt": "node scripts/record-producthunt-demo.cjs",
     "test": "node scripts/run-playwright.cjs",
     "test:e2e": "node scripts/run-playwright.cjs",
     "check:server": "node --check local-server.cjs"
