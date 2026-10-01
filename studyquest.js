@@ -83,6 +83,9 @@ const StudyQuest = (() => {
         "./reminders.html",
         "./search.html",
         "./feedback-admin.html",
+        "./workflow.html",
+        "./producthunt-demo.html",
+        "./404.html",
         "./source.html",
         "./aiquest.html",
         "./video-quest.html",
@@ -168,7 +171,30 @@ const StudyQuest = (() => {
     }
 
     function write(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+            return true;
+        } catch (error) {
+            window.dispatchEvent(new CustomEvent("studyquest:storage-error", {
+                detail: { key, message: "StudyQuest could not save data in this browser." }
+            }));
+            return false;
+        }
+    }
+
+    function readSeeded(key, buildDefault) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                return JSON.parse(raw);
+            }
+        } catch (error) {
+            // A malformed or unavailable value should not prevent the workspace from opening.
+        }
+
+        const seeded = buildDefault();
+        write(key, seeded);
+        return seeded;
     }
 
     function clampNumber(value, min, max, fallback) {
@@ -219,7 +245,11 @@ const StudyQuest = (() => {
     }
 
     function saveProfile(profile) {
-        write(storageKeys.profile, profile);
+        const nextProfile = { ...profile };
+        if (nextProfile.isGuest && String(nextProfile.name || "").trim() && nextProfile.name !== "Learner") {
+            delete nextProfile.isGuest;
+        }
+        write(storageKeys.profile, nextProfile);
     }
 
     function getTasks() {
@@ -231,7 +261,7 @@ const StudyQuest = (() => {
     }
 
     function getNotes() {
-        return read(storageKeys.notes, [
+        return readSeeded(storageKeys.notes, () => [
             { id: newId(), name: "Mathematics", content: "", updatedAt: new Date().toISOString() },
             { id: newId(), name: "Science", content: "", updatedAt: new Date().toISOString() },
             { id: newId(), name: "English", content: "", updatedAt: new Date().toISOString() }
@@ -251,7 +281,7 @@ const StudyQuest = (() => {
     }
 
     function getSchedule() {
-        return read(storageKeys.schedule, [
+        return readSeeded(storageKeys.schedule, () => [
             { id: newId(), time: "06:30", task: "Morning revision", note: "Warm up with yesterday's topic" },
             { id: newId(), time: "17:00", task: "Problem practice", note: "Focus on your weakest subject" }
         ]);
@@ -997,7 +1027,14 @@ const StudyQuest = (() => {
                 body: body ? JSON.stringify(body) : null
             });
             const text = await response.text();
-            const data = text ? JSON.parse(text) : {};
+            let data = {};
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = { error: text.slice(0, 300) || "StudyQuest API returned an unreadable response." };
+                }
+            }
             if (!response.ok) {
                 throw new Error(data.detail || data.error || "StudyQuest API request failed.");
             }
@@ -1163,9 +1200,23 @@ const StudyQuest = (() => {
     }
 
     function ensureProfile() {
-        if (!getProfile()) {
-            window.location.href = "index.html";
+        const existing = getProfile();
+        if (existing) {
+            return existing;
         }
+
+        const guestProfile = {
+            name: "Learner",
+            className: "Study workspace",
+            email: "",
+            goal: "Build a steady study routine",
+            subjects: [],
+            studyStyle: "",
+            isGuest: true,
+            createdAt: new Date().toISOString()
+        };
+        saveProfile(guestProfile);
+        return guestProfile;
     }
 
     function greetName() {
@@ -1952,7 +2003,7 @@ const StudyQuest = (() => {
         if (!("caches" in window)) {
             return { ok: false, count: 0, message: "Offline cache is not available in this browser." };
         }
-        const cache = await caches.open("studyquest-user-offline-v1");
+        const cache = await caches.open("studyquest-user-offline-v2");
         await cache.addAll(offlineAssets);
         if ("serviceWorker" in navigator) {
             const registration = await navigator.serviceWorker.getRegistration();

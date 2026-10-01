@@ -1,4 +1,4 @@
-const CACHE_NAME = "studyquest-v13";
+const CACHE_NAME = "studyquest-v14";
 const CORE_ASSETS = [
     "./",
     "./index.html",
@@ -14,7 +14,9 @@ const CORE_ASSETS = [
     "./reminders.html",
     "./search.html",
     "./feedback-admin.html",
+    "./workflow.html",
     "./producthunt-demo.html",
+    "./404.html",
     "./source.html",
     "./aiquest.html",
     "./video-quest.html",

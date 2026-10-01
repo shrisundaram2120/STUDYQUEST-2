@@ -747,7 +747,13 @@ async def skill_tree() -> dict[str, Any]:
 
 
 @app.post("/api/v1/skills/unlock")
-async def unlock_skill(request: SkillUnlockRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
+async def unlock_skill(
+    request: SkillUnlockRequest,
+    background_tasks: BackgroundTasks,
+    account: dict[str, Any] = Depends(require_user),
+) -> dict[str, Any]:
+    if account["user_id"] != request.user_id:
+        raise HTTPException(status_code=403, detail="You can only unlock skills for your own account.")
     database = get_db()
     skill = await database.skills.find_one({"node_id": request.node_id}, {"_id": 0})
     if not skill:
@@ -773,7 +779,12 @@ async def unlock_skill(request: SkillUnlockRequest, background_tasks: Background
 
 
 @app.post("/api/v1/sprints/start", response_model=SprintResponse, dependencies=[Depends(rate_limited("sprint", SPRINT_RATE_LIMIT))])
-async def start_sprint(request: SprintStartRequest) -> SprintResponse:
+async def start_sprint(
+    request: SprintStartRequest,
+    account: dict[str, Any] = Depends(require_user),
+) -> SprintResponse:
+    if set(request.user_ids) != {account["user_id"]}:
+        raise HTTPException(status_code=403, detail="Start a sprint with your signed-in account only.")
     sprint = SprintState(
         sprint_id=str(uuid.uuid4()),
         party_id=request.party_id,
@@ -787,11 +798,13 @@ async def start_sprint(request: SprintStartRequest) -> SprintResponse:
 
 
 @app.get("/api/v1/sprints/{sprint_id}", response_model=SprintResponse)
-async def sprint_status(sprint_id: str) -> SprintResponse:
+async def sprint_status(sprint_id: str, account: dict[str, Any] = Depends(require_user)) -> SprintResponse:
     async with SPRINT_LOCK:
         sprint = ACTIVE_SPRINTS.get(sprint_id)
         if not sprint:
             raise HTTPException(status_code=404, detail="Sprint not found.")
+        if account["user_id"] not in sprint.user_ids:
+            raise HTTPException(status_code=403, detail="You do not have access to this sprint.")
         if sprint.expires_at <= now_utc():
             sprint.active = False
             ACTIVE_SPRINTS[sprint_id] = sprint
@@ -839,7 +852,13 @@ async def get_video_lesson(lesson_id: str) -> LessonConfig:
 
 
 @app.post("/api/v1/quests/evaluate", response_model=QuestEvaluationResponse, dependencies=[Depends(rate_limited("quest", QUEST_RATE_LIMIT))])
-async def evaluate_quest(request: QuestEvaluationRequest, background_tasks: BackgroundTasks) -> QuestEvaluationResponse:
+async def evaluate_quest(
+    request: QuestEvaluationRequest,
+    background_tasks: BackgroundTasks,
+    account: dict[str, Any] = Depends(require_user),
+) -> QuestEvaluationResponse:
+    if account["user_id"] != request.user_id:
+        raise HTTPException(status_code=403, detail="You can only evaluate checkpoints for your own account.")
     cache_hit = await find_verified_cache_hit(request)
     if cache_hit:
         xp_delta = int(cache_hit.get("xp_reward", 50))

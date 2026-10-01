@@ -187,8 +187,16 @@
             return document.getElementById('apiBase').value.replace(/\/$/, '');
         }
 
+        function apiHeaders() {
+            const session = StudyQuest.getCloudSession();
+            return {
+                'Content-Type': 'application/json',
+                ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {})
+            };
+        }
+
         function userId() {
-            return profile.email || profile.name || 'local-studyquest-user';
+            return StudyQuest.getCloudSession()?.uid || profile.email || profile.name || 'local-studyquest-user';
         }
 
         async function loadLesson() {
@@ -294,7 +302,7 @@
             try {
                 const response = await fetch(`${apiBase()}/api/v1/sprints/start`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: apiHeaders(),
                     body: JSON.stringify(payload)
                 });
                 if (!response.ok) throw new Error('Sprint backend unavailable');
@@ -341,7 +349,7 @@
             try {
                 const response = await fetch(`${apiBase()}/api/v1/quests/evaluate`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: apiHeaders(),
                     body: JSON.stringify(payload)
                 });
                 if (!response.ok) throw new Error('Evaluation backend unavailable');

@@ -65,7 +65,7 @@
     <script src="studyquest.js"></script>
     <script>
         const existingProfile = StudyQuest.getProfile();
-        if (existingProfile) {
+        if (existingProfile && !existingProfile.isGuest) {
             window.location.href = 'home.html';
         }
 

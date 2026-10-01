@@ -20,6 +20,41 @@ test.beforeEach(async ({ page }) => {
   await seedProfile(page);
 });
 
+test("public deep links open a usable guest workspace without runtime errors", async ({ page }) => {
+  await page.addInitScript(() => localStorage.clear());
+  const runtimeErrors = [];
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
+
+  await page.goto("/home.html");
+  await expect(page.getByRole("heading", { name: "Weekly progress" })).toBeVisible();
+  await expect(page.locator("#welcomeTitle")).toContainText("Learner");
+
+  const guestProfile = await page.evaluate(() => JSON.parse(localStorage.getItem("studyquest.profile")));
+  expect(guestProfile.isGuest).toBe(true);
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("starter notes and timetable blocks keep their IDs across reloads", async ({ page }) => {
+  await page.goto("/home.html");
+  const firstState = await page.evaluate(() => {
+    localStorage.removeItem("studyquest.notes");
+    localStorage.removeItem("studyquest.schedule");
+    return {
+      notes: StudyQuest.getNotes(),
+      schedule: StudyQuest.getSchedule()
+    };
+  });
+
+  await page.reload();
+  const reloadedState = await page.evaluate(() => ({
+    notes: JSON.parse(localStorage.getItem("studyquest.notes")),
+    schedule: JSON.parse(localStorage.getItem("studyquest.schedule"))
+  }));
+
+  expect(reloadedState.notes.map((note) => note.id)).toEqual(firstState.notes.map((note) => note.id));
+  expect(reloadedState.schedule.map((block) => block.id)).toEqual(firstState.schedule.map((block) => block.id));
+});
+
 test("dashboard exposes the upgraded study surfaces", async ({ page }) => {
   await page.goto("/home.html");
   await expect(page.getByRole("heading", { name: "Weekly progress" })).toBeVisible();

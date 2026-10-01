@@ -5,10 +5,11 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from studyquest_api import app
+from studyquest_api import app, require_user
 
 
 def main() -> None:
+    app.dependency_overrides[require_user] = lambda: {"user_id": "smoke-user", "roles": ["learner"]}
     client = TestClient(app)
 
     health = client.get("/health")
@@ -23,6 +24,9 @@ def main() -> None:
     sprint = client.post("/api/v1/sprints/start", json={"user_id": "smoke-user", "party_id": "smoke"})
     assert sprint.status_code == 200, sprint.text
     assert sprint.json()["active"] is True
+
+    forbidden_sprint = client.post("/api/v1/sprints/start", json={"user_id": "another-user", "party_id": "smoke"})
+    assert forbidden_sprint.status_code == 403, forbidden_sprint.text
 
     evaluation = client.post(
         "/api/v1/quests/evaluate",
@@ -39,6 +43,17 @@ def main() -> None:
     assert evaluation.status_code == 200, evaluation.text
     assert evaluation.json()["source"] in {"local_socratic_fallback", "gemini", "mongo_vector_cache"}
 
+    forbidden_evaluation = client.post(
+        "/api/v1/quests/evaluate",
+        json={
+            "user_id": "another-user",
+            "video_id": "sample-video-quest",
+            "milestone_timestamp": 15,
+            "solution": "This response should be rejected because it claims another learner account.",
+        },
+    )
+    assert forbidden_evaluation.status_code == 403, forbidden_evaluation.text
+
     feedback = client.post(
         "/api/v1/feedback",
         json={
@@ -54,9 +69,10 @@ def main() -> None:
     assert admin_feedback.status_code in {403, 503}, admin_feedback.text
 
     passport = client.get("/api/v1/passports/smoke-user")
-    assert passport.status_code == 401, passport.text
+    assert passport.status_code == 503, passport.text
 
     print("StudyQuest API smoke test passed.")
+    app.dependency_overrides.clear()
 
 
 if __name__ == "__main__":
